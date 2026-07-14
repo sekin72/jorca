@@ -244,6 +244,27 @@ const browserHistoryEntriesSchema = z
   .array(browserHistoryEntrySchema)
   .transform((entries) => normalizeBrowserHistoryEntries(entries))
 
+// ─── Canvas (experimentalCanvas) ────────────────────────────────────
+
+const canvasPointSchema = z.object({ x: z.number(), y: z.number() })
+const canvasSizeSchema = z.object({ width: z.number(), height: z.number() })
+
+const persistedCanvasNodeSchema = z.object({
+  id: z.string(),
+  panelId: z.string(),
+  origin: canvasPointSchema,
+  size: canvasSizeSchema,
+  zOrder: z.number(),
+  creationIndex: z.number(),
+  isPinned: z.boolean().optional()
+})
+
+const persistedWorktreeCanvasSchema = z.object({
+  nodes: z.record(z.string(), persistedCanvasNodeSchema),
+  viewportOffset: canvasPointSchema,
+  zoomLevel: z.number()
+})
+
 // ─── Workspace session ──────────────────────────────────────────────
 
 export const workspaceSessionStateSchema: z.ZodType<WorkspaceSessionState> = z.object({
@@ -295,7 +316,13 @@ export const workspaceSessionStateSchema: z.ZodType<WorkspaceSessionState> = z.o
     )
     .optional(),
   defaultTerminalTabsAppliedByWorktreeId: z.record(z.string(), z.literal(true)).optional(),
-  sleepingAgentSessionsByPaneKey: sleepingAgentSessionsByPaneKeySchema
+  sleepingAgentSessionsByPaneKey: sleepingAgentSessionsByPaneKeySchema,
+  // Why: experimental canvas geometry is non-critical UI state that the renderer
+  // re-sanitizes per node on load. `.catch(undefined)` keeps one corrupt canvas
+  // map from failing the whole-session parse (which would reset every terminal /
+  // editor / browser to defaults) — the same blast-radius policy as
+  // lastVisitedAtByWorktreeId above.
+  canvasByWorktree: z.record(z.string(), persistedWorktreeCanvasSchema).optional().catch(undefined)
 })
 
 export type ParsedWorkspaceSession =

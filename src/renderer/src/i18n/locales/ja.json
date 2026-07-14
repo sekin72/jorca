@@ -5324,6 +5324,12 @@
             "defaultViewLabel": "デフォルトのネイティブ チャット ビュー",
             "defaultViewTerminal": "Terminal チャット",
             "defaultViewNative": "ネイティブチャット"
+          },
+          "canvas": {
+            "title": "Canvas workspace",
+            "description": "Infinite-canvas workbench with movable panel windows per worktree.",
+            "label": "Canvas workspace",
+            "body": "Replaces the tiled workspace layout with a pan/zoom canvas of movable terminal, editor, and browser windows. Experimental while the canvas is being built."
           }
         },
         "FloatingWorkspacePane": {
@@ -7529,6 +7535,10 @@
               "title": "ネイティブチャット",
               "description": "対応エージェントのターミナルセッション用デスクトップチャット画面をプレビューします。",
               "grok": "grok"
+            },
+            "canvas": {
+              "title": "Canvas workspace",
+              "description": "Infinite-canvas workbench with movable panel windows per worktree."
             }
           }
         },
@@ -12930,6 +12940,34 @@
         "searchLabels": "ラベルをフィルター…",
         "searchAssignee": "担当者をフィルター…",
         "back": "戻る"
+      },
+      "canvas": {
+        "CanvasNode": {
+          "unpin": "Unpin",
+          "pin": "Pin",
+          "restore": "Restore",
+          "maximize": "Maximize",
+          "close": "Close"
+        },
+        "CanvasNodeContent": {
+          "placeholder": "Panel"
+        },
+        "EmptyCanvasOverlay": {
+          "title": "Empty canvas",
+          "hint": "Open a terminal, editor, or browser to place it here."
+        },
+        "CanvasToolbar": {
+          "openFile": "Open file…",
+          "newFile": "New file",
+          "newTerminal": "New terminal",
+          "newBrowser": "New browser",
+          "overview": "Overview"
+        },
+        "overview": {
+          "title": "Overview",
+          "exit": "Exit overview",
+          "empty": "No worktree canvases yet. Add nodes to a canvas to see it here."
+        }
       }
     },
     "i18n": {

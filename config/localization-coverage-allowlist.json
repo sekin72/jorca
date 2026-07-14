@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "filePath": "src/renderer/src/components/canvas/CanvasContextMenu.tsx",
+    "kind": "object-property:label",
+    "text": "Claude Code",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/canvas/CanvasContextMenu.tsx",
+    "kind": "object-property:label",
+    "text": "opencode",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/canvas/CanvasContextMenu.tsx",
+    "kind": "object-property:label",
+    "text": "Gemini CLI",
+    "dynamic": false,
+    "count": 1
+  }
+]

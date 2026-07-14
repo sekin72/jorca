@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/command'
 import { prepareQuickOpenFiles, rankQuickOpenFiles } from '@/components/quick-open-search'
 import { useRuntimeFileListForWorktree } from '@/components/quick-open-file-list'
+import { openFileAsCanvasNode } from '@/components/canvas/canvas-node-creation'
 import { useModalReturnFocus } from '@/hooks/useModalReturnFocus'
 import { translate } from '@/i18n/i18n'
 import {
@@ -33,6 +34,7 @@ export default function QuickOpen(): React.JSX.Element | null {
   const closeModal = useAppStore((s) => s.closeModal)
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
   const openFile = useAppStore((s) => s.openFile)
+  const canvasEnabled = useAppStore((s) => s.settings?.experimentalCanvas === true)
   const activeWorktree = useActiveWorktree()
 
   const [query, setQuery] = useState('')
@@ -75,6 +77,12 @@ export default function QuickOpen(): React.JSX.Element | null {
       // the surface that was active before QuickOpen opened.
       skipReturnFocus()
       closeModal()
+      // In canvas mode a picked file becomes a canvas node instead of a tiled
+      // editor tab — see docs/canvas-workspace.md §5.
+      if (canvasEnabled) {
+        openFileAsCanvasNode(activeWorktreeId, worktreePath, relativePath)
+        return
+      }
       openFile({
         filePath: joinPath(worktreePath, relativePath),
         relativePath,
@@ -83,7 +91,7 @@ export default function QuickOpen(): React.JSX.Element | null {
         mode: 'edit'
       })
     },
-    [activeWorktreeId, worktreePath, openFile, closeModal, skipReturnFocus]
+    [activeWorktreeId, worktreePath, openFile, closeModal, skipReturnFocus, canvasEnabled]
   )
 
   const handleOpenChange = useCallback(

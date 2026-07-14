@@ -5339,6 +5339,12 @@
             "defaultViewLabel": "Default native chat view",
             "defaultViewTerminal": "Terminal chat",
             "defaultViewNative": "Native chat"
+          },
+          "canvas": {
+            "title": "Canvas workspace",
+            "description": "Infinite-canvas workbench with movable panel windows per worktree.",
+            "label": "Canvas workspace",
+            "body": "Replaces the tiled workspace layout with a pan/zoom canvas of movable terminal, editor, and browser windows. Experimental while the canvas is being built."
           }
         },
         "FloatingWorkspacePane": {
@@ -7544,6 +7550,10 @@
               "title": "Native chat",
               "description": "Preview the desktop chat surface for supported agent terminal sessions.",
               "grok": "grok"
+            },
+            "canvas": {
+              "title": "Canvas workspace",
+              "description": "Infinite-canvas workbench with movable panel windows per worktree."
             }
           }
         },
@@ -12930,6 +12940,34 @@
         "searchLabels": "Filter labels…",
         "searchAssignee": "Filter assignee…",
         "back": "Back"
+      },
+      "canvas": {
+        "CanvasNode": {
+          "unpin": "Unpin",
+          "pin": "Pin",
+          "restore": "Restore",
+          "maximize": "Maximize",
+          "close": "Close"
+        },
+        "CanvasNodeContent": {
+          "placeholder": "Panel"
+        },
+        "EmptyCanvasOverlay": {
+          "title": "Empty canvas",
+          "hint": "Open a terminal, editor, or browser to place it here."
+        },
+        "CanvasToolbar": {
+          "openFile": "Open file…",
+          "newFile": "New file",
+          "newTerminal": "New terminal",
+          "newBrowser": "New browser",
+          "overview": "Overview"
+        },
+        "overview": {
+          "title": "Overview",
+          "exit": "Exit overview",
+          "empty": "No worktree canvases yet. Add nodes to a canvas to see it here."
+        }
       }
     },
     "i18n": {

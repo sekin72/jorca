@@ -605,6 +605,10 @@ function sanitizeTaskResumeState(value: unknown): TaskResumeState | undefined {
 export type UISlice = {
   sidebarOpen: boolean
   sidebarWidth: number
+  /** Whether the canvas Overview (all-worktrees tiles) is showing in place of the
+   *  active worktree's canvas. Session-only — not persisted. See Phase 2. */
+  canvasOverviewActive: boolean
+  setCanvasOverviewActive: (active: boolean) => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   setSidebarWidth: (width: number) => void
@@ -1010,6 +1014,8 @@ export type UISlice = {
 export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get) => ({
   sidebarOpen: true,
   sidebarWidth: 280,
+  canvasOverviewActive: false,
+  setCanvasOverviewActive: (active) => set({ canvasOverviewActive: active }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setSidebarWidth: (width) => set({ sidebarWidth: width }),

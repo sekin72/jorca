@@ -150,6 +150,42 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
     },
     {
       title: translate(
+        'auto.components.settings.experimental.search.canvas.title',
+        'Canvas workspace'
+      ),
+      description: translate(
+        'auto.components.settings.experimental.search.canvas.description',
+        'Infinite-canvas workbench with movable panel windows per worktree.'
+      ),
+      keywords: [
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.0d24759f14',
+          'experimental'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.canvas.canvas',
+          'canvas'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.canvas.workspace',
+          'workspace'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.canvas.infinite',
+          'infinite'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.canvas.panels',
+          'panels'
+        ),
+        ...translateSearchKeyword(
+          'auto.components.settings.experimental.search.canvas.windows',
+          'windows'
+        )
+      ]
+    },
+    {
+      title: translate(
         'auto.components.settings.experimental.search.agentHibernation.title',
         'Agent sleep'
       ),
@@ -211,6 +247,9 @@ export function getExperimentalSearchEntry() {
     ),
     terminalAttention: findEntry(
       translate('auto.components.settings.experimental.search.9e4ddf776d', 'Terminal attention')
+    ),
+    canvas: findEntry(
+      translate('auto.components.settings.experimental.search.canvas.title', 'Canvas workspace')
     ),
     agentHibernation: findEntry(
       translate(

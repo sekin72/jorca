@@ -1,5 +1,6 @@
 /* eslint-disable max-lines */
 import type { ExecutionHostId } from './execution-host'
+import type { PersistedWorktreeCanvas } from './canvas-node'
 import type { RemovedSshTargetTombstone, SshRemotePtyLease, SshTarget } from './ssh-types'
 import type { Automation, AutomationExecutionTargetType, AutomationRun } from './automations-types'
 import type { WorkspaceSource } from './workspace-source'
@@ -1095,6 +1096,9 @@ export type WorkspaceSessionState = {
   defaultTerminalTabsAppliedByWorktreeId?: Record<string, true>
   /** Provider-session resume records captured when workspaces sleep. */
   sleepingAgentSessionsByPaneKey?: Record<string, SleepingAgentSessionRecord>
+  /** Per-worktree infinite-canvas geometry (experimentalCanvas). Nodes reference
+   *  tab ids that survive hydration; orphan nodes are pruned on restore. */
+  canvasByWorktree?: Record<string, PersistedWorktreeCanvas>
 }
 
 export type WorkspaceSessionPatch = Partial<WorkspaceSessionState>
@@ -2911,6 +2915,10 @@ export type GlobalSettings = {
    *  and agent-completion events. Opt-in while the signal/noise balance is
    *  being tested. */
   experimentalTerminalAttention: boolean
+  /** Experimental: infinite-canvas workbench — replaces the tiled per-worktree
+   *  layout with movable terminal/editor/browser windows on a pan/zoom canvas.
+   *  See docs/canvas-workspace.md. Opt-in while the canvas is being built. */
+  experimentalCanvas: boolean
   /** Experimental: automatically sleep completed, resumable background agent terminals. */
   experimentalAgentHibernation?: boolean
   /** Milliseconds a completed agent must stay idle before hibernation can be considered. */

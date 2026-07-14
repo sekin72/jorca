@@ -296,6 +296,7 @@ export const SETTINGS_CHANGED_WHITELIST = [
   'experimentalNativeChat',
   'experimentalActivity',
   'experimentalTerminalAttention',
+  'experimentalCanvas',
   'experimentalAgentHibernation',
   'experimentalEphemeralVms',
   'geminiCliOAuthEnabled',

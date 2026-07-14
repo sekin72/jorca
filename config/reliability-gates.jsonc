@@ -3582,6 +3582,264 @@
         "No live Electron reload-survival assertion yet — the gate proves the main-side accounting reset, not the full renderer reattach paint."
       ],
       "demotionRule": "Demote or quarantine if the gate flakes once without a product bug or harness bug filed to the owner."
+    },
+    {
+      "id": "canvas.pane-survival-on-cull",
+      "title": "Live terminal/browser panes on the canvas survive viewport culling",
+      "maturity": "experimental",
+      "protection": "partial",
+      "owner": "canvas-workspace",
+      "layer": "renderer-unit",
+      "surfaces": [
+        "canvas workspace",
+        "viewport culling",
+        "terminal survival",
+        "browser survival"
+      ],
+      "platforms": [
+        "macos",
+        "linux",
+        "windows"
+      ],
+      "providers": [
+        "local",
+        "daemon",
+        "ssh"
+      ],
+      "coveredPlatforms": [
+        "macos"
+      ],
+      "coveredProviders": [],
+      "coverageNotes": "Local macOS evidence over the pure cull selector: keep-mounted (terminal/browser), focused, and pinned nodes are exempt from culling while off-screen non-exempt nodes are dropped. A live Electron pan/PTY-survival flow is a known gap.",
+      "motivatingLinks": [
+        "docs/canvas-workspace.md — Phase 1 §5 panel identity bridge (keep-mounted panes)"
+      ],
+      "invariant": "A node whose panel is a live terminal/browser (keep-mounted), or that is focused or pinned, is never culled from the canvas even when its geometry lies entirely outside the margin-expanded viewport, so panning cannot tear down its PTY/webview.",
+      "oracle": "selectVisibleNodeIds returns a far-off-screen node when its panelId is in the keep-mounted set (and when it is the focused or a pinned node), and omits an off-screen node that is none of those.",
+      "commands": [
+        "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/store/canvas/canvas-cull.test.ts"
+      ],
+      "testFiles": [
+        "src/renderer/src/store/canvas/canvas-cull.test.ts"
+      ],
+      "assertionRefs": [
+        {
+          "file": "src/renderer/src/store/canvas/canvas-cull.test.ts",
+          "assertions": [
+            "keep-mounted panels are exempt from culling even when fully off-screen",
+            "focused and pinned nodes are exempt from culling",
+            "nodes far outside the margin-expanded viewport are culled",
+            "everything renders before the container size is known"
+          ]
+        }
+      ],
+      "evidenceRuns": [
+        {
+          "date": "2026-07-13",
+          "runner": "local",
+          "platform": "macos",
+          "command": "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/store/canvas/canvas-cull.test.ts",
+          "result": "passed",
+          "durationSeconds": 0.11,
+          "summary": "1 test file, 6 tests passed on main@26934b11b in a clean checkout."
+        }
+      ],
+      "runtimeBudget": {
+        "p95Seconds": 10,
+        "scope": "local unit test"
+      },
+      "flakeHistory": {
+        "status": "unknown",
+        "evidence": "Registered alongside the Phase-1 canvas landing; needs soak history before blocking promotion."
+      },
+      "redGreenEvidence": {
+        "status": "partial",
+        "evidence": "The unit test fails if the keep-mounted/focused/pinned exemption is removed from selectVisibleNodeIds. Needs a saved intentional-break artifact before blocking promotion."
+      },
+      "performanceBudget": {
+        "required": false,
+        "evidence": "Pure O(nodes) selector with no runtime hot-path allocation; a live Electron pan-throughput measurement is only needed if culling is moved onto the gesture path."
+      },
+      "promotionCriteria": [
+        "Run in soak for at least 100 consecutive passes or 14 days across required CI platforms.",
+        "Attach red/green evidence from removing the cull exemption.",
+        "Add a live Electron test that pans a driven terminal off-screen and proves its PTY output resumes on return."
+      ],
+      "knownGaps": [
+        "Asserts the pure cull selector only — not a full Electron pan flow with a live PTY/webview surviving off-screen.",
+        "SSH/WSL/remote providers ride the same renderer selector but have no dedicated live survival test yet."
+      ],
+      "demotionRule": "Demote or quarantine if the gate flakes once without a product bug or harness bug filed to the owner."
+    },
+    {
+      "id": "canvas.geometry-round-trips",
+      "title": "Canvas geometry survives persistence and rehydration without corruption",
+      "maturity": "experimental",
+      "protection": "partial",
+      "owner": "canvas-workspace",
+      "layer": "renderer-unit",
+      "surfaces": [
+        "canvas workspace",
+        "session persistence",
+        "hydration",
+        "orphan pruning"
+      ],
+      "platforms": [
+        "macos",
+        "linux",
+        "windows"
+      ],
+      "providers": [
+        "local",
+        "daemon",
+        "ssh"
+      ],
+      "coveredPlatforms": [
+        "macos"
+      ],
+      "coveredProviders": [],
+      "coverageNotes": "Local macOS evidence over the full persist chain: live store snapshot → session payload → zod read schema → orphan prune → rehydrated store. NaN geometry is rejected by the schema and degrades to no-canvas rather than corrupting the session.",
+      "motivatingLinks": [
+        "docs/canvas-workspace.md — Phase 1 §7 persistence"
+      ],
+      "invariant": "Canvas node geometry (origin/size/z-order) plus viewport and zoom round-trips losslessly from a live store through the persisted session payload and the zod read schema back into a store, and nodes whose backing tab did not survive hydration are pruned.",
+      "oracle": "A store's persisted snapshot, after buildCanvasByWorktreeForSession then parseWorkspaceSession then loadWorkspaceCanvas, reproduces identical node origins/sizes/panelIds and viewport/zoom; pruneCanvasNodesToTabs drops nodes whose panelId is absent from the surviving tab set.",
+      "commands": [
+        "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/store/canvas/canvas-persistence-roundtrip.test.ts"
+      ],
+      "testFiles": [
+        "src/renderer/src/store/canvas/canvas-persistence-roundtrip.test.ts"
+      ],
+      "assertionRefs": [
+        {
+          "file": "src/renderer/src/store/canvas/canvas-persistence-roundtrip.test.ts",
+          "assertions": [
+            "geometry survives snapshot to session payload to schema parse to hydrate unchanged",
+            "a node whose backing tab did not survive is dropped while the rest are kept"
+          ]
+        }
+      ],
+      "evidenceRuns": [
+        {
+          "date": "2026-07-13",
+          "runner": "local",
+          "platform": "macos",
+          "command": "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/store/canvas/canvas-persistence-roundtrip.test.ts",
+          "result": "passed",
+          "durationSeconds": 1.1,
+          "summary": "1 test file, 2 tests passed on main@26934b11b in a clean checkout."
+        }
+      ],
+      "runtimeBudget": {
+        "p95Seconds": 10,
+        "scope": "local unit test"
+      },
+      "flakeHistory": {
+        "status": "unknown",
+        "evidence": "Registered with the Phase-1 persistence landing; needs soak history before blocking promotion."
+      },
+      "redGreenEvidence": {
+        "status": "partial",
+        "evidence": "The test fails if the zod read schema omits canvasByWorktree (z.object strips unknown keys) or if the prune over-deletes. Needs a saved intentional-break artifact before blocking promotion."
+      },
+      "performanceBudget": {
+        "required": false,
+        "evidence": "Serialization/parse of a small per-worktree map; no runtime hot path. The sync bridge already coalesces writes off the 60fps gesture path."
+      },
+      "promotionCriteria": [
+        "Run in soak for at least 100 consecutive passes or 14 days across required CI platforms.",
+        "Attach red/green evidence from removing the schema field or the prune step.",
+        "Add a live Electron reload test that proves geometry restores after a real relaunch (the zod schema runs in main)."
+      ],
+      "knownGaps": [
+        "Asserts the pure persist/parse/hydrate chain, not a full Electron relaunch restoring geometry on screen.",
+        "Host-partition split/merge of canvasByWorktree for runtime worktrees is covered generically, not by this gate."
+      ],
+      "demotionRule": "Demote or quarantine if the gate flakes once without a product bug or harness bug filed to the owner."
+    },
+    {
+      "id": "canvas.worktree-isolation",
+      "title": "Each worktree's canvas store is isolated from every other worktree",
+      "maturity": "experimental",
+      "protection": "partial",
+      "owner": "canvas-workspace",
+      "layer": "renderer-unit",
+      "surfaces": [
+        "canvas workspace",
+        "per-worktree store registry"
+      ],
+      "platforms": [
+        "macos",
+        "linux",
+        "windows"
+      ],
+      "providers": [
+        "local",
+        "daemon",
+        "ssh"
+      ],
+      "coveredPlatforms": [
+        "macos"
+      ],
+      "coveredProviders": [],
+      "coverageNotes": "Local macOS evidence over the per-worktree canvas store registry: distinct worktrees get distinct stores, writes do not leak across worktrees, and release yields a fresh empty store.",
+      "motivatingLinks": [
+        "docs/canvas-workspace.md — Phase 1 §3 per-worktree canvas store registry"
+      ],
+      "invariant": "getOrCreateCanvasStoreForWorktree returns a stable per-worktree instance; writes to one worktree's canvas never appear in another's; releasing a worktree drops its store so a later get yields a fresh empty store.",
+      "oracle": "Two distinct worktree ids resolve to distinct stores; adding a node to one leaves the other empty; peek returns the same instance; release makes peek undefined and the next get returns a new empty store.",
+      "commands": [
+        "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/store/canvas/canvas-worktree-isolation.test.ts"
+      ],
+      "testFiles": [
+        "src/renderer/src/store/canvas/canvas-worktree-isolation.test.ts"
+      ],
+      "assertionRefs": [
+        {
+          "file": "src/renderer/src/store/canvas/canvas-worktree-isolation.test.ts",
+          "assertions": [
+            "a stable instance is returned per worktree and nodes are never shared across worktrees",
+            "release drops the instance so a later get creates a fresh, empty store"
+          ]
+        }
+      ],
+      "evidenceRuns": [
+        {
+          "date": "2026-07-13",
+          "runner": "local",
+          "platform": "macos",
+          "command": "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/store/canvas/canvas-worktree-isolation.test.ts",
+          "result": "passed",
+          "durationSeconds": 0.1,
+          "summary": "1 test file, 2 tests passed on main@26934b11b in a clean checkout."
+        }
+      ],
+      "runtimeBudget": {
+        "p95Seconds": 10,
+        "scope": "local unit test"
+      },
+      "flakeHistory": {
+        "status": "unknown",
+        "evidence": "Registered with the Phase-1 canvas landing; needs soak history before blocking promotion."
+      },
+      "redGreenEvidence": {
+        "status": "partial",
+        "evidence": "The test fails if the registry stops keying stores by worktree or leaks nodes between instances. Needs a saved intentional-break artifact before blocking promotion."
+      },
+      "performanceBudget": {
+        "required": false,
+        "evidence": "Map lookups only; no runtime hot path."
+      },
+      "promotionCriteria": [
+        "Run in soak for at least 100 consecutive passes or 14 days across required CI platforms.",
+        "Attach red/green evidence from a registry keying regression.",
+        "Add a live test that switches worktrees in the running app and proves canvases never bleed nodes."
+      ],
+      "knownGaps": [
+        "Asserts the registry contract only, not a live worktree-switch in Electron.",
+        "Overview projection reads across worktrees; its own aggregation has separate unit coverage, not this gate."
+      ],
+      "demotionRule": "Demote or quarantine if the gate flakes once without a product bug or harness bug filed to the owner."
     }
   ]
 }

@@ -425,4 +425,52 @@ describe('parseWorkspaceSession', () => {
       expect(result.value.unifiedTabs?.wt[0].viewMode).toBe('terminal')
     }
   })
+
+  it('preserves canvasByWorktree through the parse (not stripped)', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: null,
+      activeTabId: null,
+      tabsByWorktree: {},
+      terminalLayoutsByTabId: {},
+      canvasByWorktree: {
+        wt: {
+          nodes: {
+            n0: {
+              id: 'n0',
+              panelId: 'tab1',
+              origin: { x: 10, y: 20 },
+              size: { width: 300, height: 200 },
+              zOrder: 0,
+              creationIndex: 0,
+              isPinned: true
+            }
+          },
+          viewportOffset: { x: -5, y: 7 },
+          zoomLevel: 1.25
+        }
+      }
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.canvasByWorktree?.wt.nodes.n0.panelId).toBe('tab1')
+      expect(result.value.canvasByWorktree?.wt.zoomLevel).toBe(1.25)
+    }
+  })
+
+  it('degrades a corrupt canvasByWorktree to undefined without failing the session', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: null,
+      activeTabId: null,
+      tabsByWorktree: {},
+      terminalLayoutsByTabId: {},
+      // zoomLevel is the wrong type — the field degrades, the session survives.
+      canvasByWorktree: { wt: { nodes: {}, viewportOffset: { x: 0, y: 0 }, zoomLevel: 'nope' } }
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.canvasByWorktree).toBeUndefined()
+    }
+  })
 })

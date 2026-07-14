@@ -32,6 +32,7 @@ function createSnapshot(
     lastKnownRelayPtyIdByTabId: {},
     lastVisitedAtByWorktreeId: {},
     defaultTerminalTabsAppliedByWorktreeId: {},
+    canvasByWorktree: {},
     ...overrides
   }
 }

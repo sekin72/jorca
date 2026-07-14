@@ -113,6 +113,8 @@ import {
   shouldPersistWorkspaceSession
 } from './lib/workspace-session'
 import { createSessionWriteSubscriber } from './lib/session-write-subscriber'
+import { installCanvasSessionSync } from './store/canvas/canvas-session-sync'
+import { hydrateWorktreeCanvasesFromSession } from './store/canvas/hydrate-worktree-canvases'
 import {
   fetchWorkspaceSessionWithRuntimeHostOwners,
   patchWorkspaceSessionByHost,
@@ -308,6 +310,7 @@ const AutomationsPage = lazy(() => import('./components/automations/AutomationsP
 const ActivityPrototypePage = lazy(() => import('./components/activity/ActivityPrototypePage'))
 const Settings = lazy(() => import('./components/settings/Settings'))
 const SkillsPage = lazy(() => import('./components/skills/SkillsPage'))
+const WorktreeCanvas = lazy(() => import('./components/canvas/WorktreeCanvas'))
 const WorkspaceSpacePage = lazy(() => import('./components/workspace-space/WorkspaceSpacePage'))
 const MobilePage = lazy(() => import('./components/mobile/MobilePage'))
 const QuickOpen = lazy(() => import('./components/QuickOpen'))
@@ -669,6 +672,9 @@ function App(): React.JSX.Element {
   useAppMenuPaste()
   useLargeTextControlPaste()
   const petEnabled = useAppStore((s) => s.settings?.experimentalPet === true)
+  // Experimental infinite-canvas workbench replaces the tiled Terminal view when
+  // enabled — see docs/canvas-workspace.md.
+  const canvasEnabled = useAppStore((s) => s.settings?.experimentalCanvas === true)
   const petVisible = useAppStore((s) => s.petVisible)
   const renderPetOverlay = shouldRenderPetOverlay({
     persistedUIReady,
@@ -973,6 +979,9 @@ function App(): React.JSX.Element {
             actions.hydrateTabsSession(sessionRead.session, sessionHydrationOptions)
             actions.hydrateEditorSession(sessionRead.session, sessionHydrationOptions)
             actions.hydrateBrowserSession(sessionRead.session, sessionHydrationOptions)
+            // Why: canvas nodes reference tab ids, so this must run after tab
+            // hydration to prune nodes whose backing tab did not survive.
+            hydrateWorktreeCanvasesFromSession(sessionRead.session)
           })
           // Why: prune lastVisitedAtByWorktreeId entries whose worktrees
           // no longer exist. Must run AFTER hydration — before this point,
@@ -1332,6 +1341,15 @@ function App(): React.JSX.Element {
             })
         }
       }
+    })
+  }, [])
+
+  // Why: mirror per-worktree canvas geometry into the app store at gesture-settle
+  // boundaries so the session writer above persists it, without 60fps pan/zoom
+  // ever churning the app store. See docs/canvas-workspace.md §7.
+  useEffect(() => {
+    return installCanvasSessionSync((worktreeId, canvas) => {
+      useAppStore.getState().setWorktreeCanvasSnapshot(worktreeId, canvas)
     })
   }, [])
 
@@ -2421,7 +2439,7 @@ function App(): React.JSX.Element {
                                     'Terminal, browser, or editor rendering failed in this workspace. Retry to remount it.'
                                   )}
                                 >
-                                  <Terminal />
+                                  {canvasEnabled ? <WorktreeCanvas /> : <Terminal />}
                                 </RecoverableRenderErrorBoundary>
                               </Suspense>
                             </div>

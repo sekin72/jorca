@@ -14,6 +14,7 @@ import { isGitBashAvailable } from '../git-bash'
 import { setUnreadDockBadgeCount } from '../dock/unread-badge'
 import { destroySystemTray } from '../tray/system-tray'
 import { authorizeExternalPath } from './filesystem-auth'
+import { pickCanvasFile } from './canvas-file-picker'
 import {
   ensureDefaultFloatingWorkspacePath,
   grantFloatingWorkspaceDirectory,
@@ -340,6 +341,9 @@ export function registerAppHandlers(store: Store, options: RegisterAppHandlersOp
 
   ipcMain.handle('app:getFloatingMarkdownDirectory', () => ensureDefaultFloatingWorkspacePath())
 
+  ipcMain.handle('app:pickCanvasFile', (event, args?: { defaultPath?: string }) =>
+    pickCanvasFile(event, args)
+  )
   ipcMain.handle('app:pickFloatingMarkdownDocument', (event) => pickFloatingMarkdownDocument(event))
 
   ipcMain.handle('app:pickFloatingWorkspaceDirectory', (event) =>

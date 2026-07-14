@@ -5324,6 +5324,12 @@
             "defaultViewLabel": "默认原生聊天视图",
             "defaultViewTerminal": "终端聊天",
             "defaultViewNative": "原生聊天"
+          },
+          "canvas": {
+            "title": "Canvas workspace",
+            "description": "Infinite-canvas workbench with movable panel windows per worktree.",
+            "label": "Canvas workspace",
+            "body": "Replaces the tiled workspace layout with a pan/zoom canvas of movable terminal, editor, and browser windows. Experimental while the canvas is being built."
           }
         },
         "FloatingWorkspacePane": {
@@ -7492,6 +7498,10 @@
               "title": "原生聊天",
               "description": "预览受支持的智能体终端会话的桌面聊天界面。",
               "grok": "grok"
+            },
+            "canvas": {
+              "title": "Canvas workspace",
+              "description": "Infinite-canvas workbench with movable panel windows per worktree."
             }
           }
         },
@@ -12930,6 +12940,34 @@
         "searchLabels": "筛选标签…",
         "searchAssignee": "筛选负责人…",
         "back": "返回"
+      },
+      "canvas": {
+        "CanvasNode": {
+          "unpin": "Unpin",
+          "pin": "Pin",
+          "restore": "Restore",
+          "maximize": "Maximize",
+          "close": "Close"
+        },
+        "CanvasNodeContent": {
+          "placeholder": "Panel"
+        },
+        "EmptyCanvasOverlay": {
+          "title": "Empty canvas",
+          "hint": "Open a terminal, editor, or browser to place it here."
+        },
+        "CanvasToolbar": {
+          "openFile": "Open file…",
+          "newFile": "New file",
+          "newTerminal": "New terminal",
+          "newBrowser": "New browser",
+          "overview": "Overview"
+        },
+        "overview": {
+          "title": "Overview",
+          "exit": "Exit overview",
+          "empty": "No worktree canvases yet. Add nodes to a canvas to see it here."
+        }
       }
     },
     "i18n": {

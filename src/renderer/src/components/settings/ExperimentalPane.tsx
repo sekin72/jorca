@@ -43,6 +43,7 @@ export function ExperimentalPane({
   const showTerminalAttention = matchesSettingsSearch(searchQuery, [
     getExperimentalSearchEntry().terminalAttention
   ])
+  const showCanvas = matchesSettingsSearch(searchQuery, [getExperimentalSearchEntry().canvas])
   const showAgentHibernation = matchesSettingsSearch(searchQuery, [
     getExperimentalSearchEntry().agentHibernation
   ])
@@ -196,6 +197,57 @@ export function ExperimentalPane({
               <span
                 className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background shadow-sm transition-transform ${
                   settings.experimentalTerminalAttention ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+        </SearchableSetting>
+      ) : null}
+
+      {showCanvas ? (
+        <SearchableSetting
+          title={translate(
+            'auto.components.settings.ExperimentalPane.canvas.title',
+            'Canvas workspace'
+          )}
+          description={translate(
+            'auto.components.settings.ExperimentalPane.canvas.description',
+            'Infinite-canvas workbench with movable panel windows per worktree.'
+          )}
+          keywords={getExperimentalSearchEntry().canvas.keywords}
+          className="space-y-3 py-2"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 shrink space-y-0.5">
+              <Label>
+                {translate(
+                  'auto.components.settings.ExperimentalPane.canvas.label',
+                  'Canvas workspace'
+                )}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {translate(
+                  'auto.components.settings.ExperimentalPane.canvas.body',
+                  'Replaces the tiled workspace layout with a pan/zoom canvas of movable terminal, editor, and browser windows. Experimental while the canvas is being built.'
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.experimentalCanvas}
+              onClick={() =>
+                updateSettings({
+                  experimentalCanvas: !settings.experimentalCanvas
+                })
+              }
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors ${
+                settings.experimentalCanvas ? 'bg-foreground' : 'bg-muted-foreground/30'
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background shadow-sm transition-transform ${
+                  settings.experimentalCanvas ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
             </button>
