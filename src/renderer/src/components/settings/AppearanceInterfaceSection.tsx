@@ -9,13 +9,18 @@ import { useAppStore } from '../../store'
 import { useShortcutKeyComboDetails } from '@/hooks/useShortcutLabel'
 import { ShortcutHintList } from './AppearanceShortcutHintList'
 import {
+  ColorField,
   FontAutocomplete,
   SettingsRow,
   SettingsSegmentedControl,
   SettingsSwitchRow
 } from './SettingsFormControls'
 import { DEFAULT_APP_FONT_FAMILY } from '../../../../shared/constants'
+import { isLikelyMonospaceFont } from '../../../../shared/font-monospace'
+import { APP_ACCENT_SWATCHES, normalizeAppAccentColor } from '../../../../shared/app-accent-color'
+import { cn } from '@/lib/utils'
 import {
+  getAccentEntries,
   getLanguageEntries,
   getSystemTrayEntries,
   getThemeEntries,
@@ -58,6 +63,7 @@ export function AppearanceInterfaceSection({
   const languageEntry = getLanguageEntries()[0]
   const systemTrayEntry = getSystemTrayEntries({ showSystemTray: true })[0]
   const themeEntry = getThemeEntries()[0]
+  const accentEntry = getAccentEntries()[0]
   const themeLabel = translate('auto.components.settings.AppearancePane.932ff1fbff', 'Theme')
   const titlebarEntry = getTitlebarEntries()[0]
   const typographyEntry = getTypographyEntries()[0]
@@ -107,6 +113,69 @@ export function AppearanceInterfaceSection({
       </SearchableSetting>
 
       <SearchableSetting
+        title={translate('auto.components.settings.appearance.search.accent.title', 'Accent Color')}
+        description={accentEntry?.description}
+        keywords={accentEntry?.keywords ?? ['accent', 'color', 'primary', 'ring', 'tint', 'theme']}
+        forceVisible={forceVisiblePrimary}
+      >
+        <SettingsRow
+          label={translate(
+            'auto.components.settings.appearance.search.accent.title',
+            'Accent Color'
+          )}
+          description={accentEntry?.description}
+          alignTop
+          control={
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {APP_ACCENT_SWATCHES.map((swatch) => {
+                  const normalized = normalizeAppAccentColor(settings.appAccentColor)
+                  const isActive = swatch.color === null ? !normalized : normalized === swatch.color
+                  return (
+                    <button
+                      key={swatch.id}
+                      type="button"
+                      onClick={() => updateSettings({ appAccentColor: swatch.color ?? '' })}
+                      aria-label={swatch.label}
+                      aria-pressed={isActive}
+                      className={cn(
+                        'size-7 rounded-full border transition-colors',
+                        isActive
+                          ? 'ring-2 ring-ring ring-offset-2 ring-offset-background border-border'
+                          : 'border-border hover:border-foreground/30'
+                      )}
+                      style={
+                        swatch.color
+                          ? { backgroundColor: swatch.color }
+                          : {
+                              backgroundColor: 'var(--background)',
+                              backgroundImage:
+                                'linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%)'
+                            }
+                      }
+                    />
+                  )
+                })}
+              </div>
+              <ColorField
+                label={translate(
+                  'auto.components.settings.appearance.search.accent.custom',
+                  'Custom'
+                )}
+                description={translate(
+                  'auto.components.settings.appearance.search.accent.customDescription',
+                  'Enter a hex color, or pick Orca to clear.'
+                )}
+                value={settings.appAccentColor ?? ''}
+                fallback=""
+                onChange={(value) => updateSettings({ appAccentColor: value })}
+              />
+            </div>
+          }
+        />
+      </SearchableSetting>
+
+      <SearchableSetting
         title={translate('auto.components.settings.AppearancePane.5e6d7aba8d', 'UI Zoom')}
         description={zoomEntry?.description}
         keywords={zoomEntry?.keywords ?? ['zoom', 'scale', 'shortcut']}
@@ -132,25 +201,44 @@ export function AppearanceInterfaceSection({
       </SearchableSetting>
 
       <SearchableSetting
-        title={translate('auto.components.settings.AppearancePane.102d6b5f9b', 'IDE Font')}
-        description={typographyEntry?.description}
+        title={translate('auto.components.settings.AppearancePane.appFont.title', 'App Font')}
+        description={translate(
+          'auto.components.settings.AppearancePane.appFont.description',
+          'Font used for the interface, editors, and terminals.'
+        )}
         keywords={typographyEntry?.keywords ?? ['font', 'typeface', 'typography']}
         forceVisible={forceVisiblePrimary}
       >
         <SettingsRow
-          label={translate('auto.components.settings.AppearancePane.102d6b5f9b', 'IDE Font')}
+          label={translate('auto.components.settings.AppearancePane.appFont.title', 'App Font')}
+          description={translate(
+            'auto.components.settings.AppearancePane.appFont.description',
+            'Font used for the interface, editors, and terminals.'
+          )}
           control={
             <FontAutocomplete
               value={settings.appFontFamily}
               suggestions={fontSuggestions}
               placeholder={DEFAULT_APP_FONT_FAMILY}
               onRequestSuggestions={onRequestFontSuggestions}
-              onChange={(value) =>
-                updateSettings({ appFontFamily: value.trim() || DEFAULT_APP_FONT_FAMILY })
-              }
+              onChange={(value) => {
+                const family = value.trim() || DEFAULT_APP_FONT_FAMILY
+                // Why: one unified font control — write both fields so all
+                // terminal/editor code that reads terminalFontFamily follows
+                // the app font without rewiring every call site.
+                updateSettings({ appFontFamily: family, terminalFontFamily: family })
+              }}
             />
           }
         />
+        {!isLikelyMonospaceFont(settings.appFontFamily) ? (
+          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+            {translate(
+              'auto.components.settings.AppearancePane.appFont.nonMonospaceWarning',
+              'This font is not monospace. Terminal alignment and code column layout may be broken — pick a monospace font for best results.'
+            )}
+          </p>
+        ) : null}
       </SearchableSetting>
 
       {showAdvanced ? (

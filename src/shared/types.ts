@@ -2506,6 +2506,10 @@ export type GlobalSettings = {
   branchPrefixCustom: string
   enableGitHubAttribution: boolean
   theme: 'system' | 'dark' | 'light'
+  /** User-chosen hex accent applied to --primary/--ring/--accent/--chart-*.
+   *  Undefined/empty = no override (today's neutral chrome). Surfaces, git
+   *  decorations, and semantic colors stay on the base palette. */
+  appAccentColor?: string
   /** Controls the left sidebar surface without changing terminal brightness. */
   leftSidebarAppearanceMode: LeftSidebarAppearanceMode
   leftSidebarTintColor?: string
@@ -2513,6 +2517,10 @@ export type GlobalSettings = {
   uiLanguage: UiLanguage
   appIcon: AppIconId
   appFontFamily: string
+  /** One-shot migration guard: the first load after font unification copies a
+   *  customized `terminalFontFamily` into `appFontFamily` so existing users
+   *  keep their monospace choice app-wide instead of resetting to Geist. */
+  appFontFamilyUnifiedFromTerminal?: boolean
   editorAutoSave: boolean
   editorAutoSaveDelayMs: number
   editorMinimapEnabled: boolean

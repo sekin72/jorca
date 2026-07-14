@@ -116,6 +116,10 @@ import { createSessionWriteSubscriber } from './lib/session-write-subscriber'
 import { installCanvasSessionSync } from './store/canvas/canvas-session-sync'
 import { hydrateWorktreeCanvasesFromSession } from './store/canvas/hydrate-worktree-canvases'
 import {
+  installMainSurfacePersistence,
+  loadMainSurface
+} from './lib/main-surface/main-surface-persistence'
+import {
   fetchWorkspaceSessionWithRuntimeHostOwners,
   patchWorkspaceSessionByHost,
   persistWorkspaceSessionByHostSync
@@ -132,6 +136,7 @@ import {
 } from './startup/startup-diagnostics'
 import { shouldRenderPetOverlay } from './components/pet/pet-overlay-visibility'
 import { applyDocumentTheme } from './lib/document-theme'
+import { applyAppAccentColor } from './lib/app-accent-color'
 import { getSystemPrefersDark } from './lib/terminal-theme'
 import { publishTerminalViewAttributesAtAppStart } from './components/terminal-pane/terminal-appearance'
 import { isEditableTarget } from './lib/editable-target'
@@ -982,6 +987,10 @@ function App(): React.JSX.Element {
             // Why: canvas nodes reference tab ids, so this must run after tab
             // hydration to prune nodes whose backing tab did not survive.
             hydrateWorktreeCanvasesFromSession(sessionRead.session)
+            // Why: the global Main surface references tabs across worktrees, so it
+            // loads after worktree canvases hydrate — it reconciles against the live
+            // tab model and re-asserts each survivor's source placeholder.
+            void loadMainSurface()
           })
           // Why: prune lastVisitedAtByWorktreeId entries whose worktrees
           // no longer exist. Must run AFTER hydration — before this point,
@@ -1353,6 +1362,10 @@ function App(): React.JSX.Element {
     })
   }, [])
 
+  // Autosave the global Main surface (cross-worktree borrowed windows) to its own
+  // file — it's global, so it can't ride the per-worktree session pipeline above.
+  useEffect(() => installMainSurfacePersistence(), [])
+
   // On shutdown, capture terminal scrollback buffers and flush to disk.
   // Runs synchronously in beforeunload: capture → Zustand set → sendSync → flush.
   useEffect(() => {
@@ -1519,6 +1532,10 @@ function App(): React.JSX.Element {
       return () => mq.removeEventListener('change', handler)
     }
   }, [settings])
+
+  useEffect(() => {
+    applyAppAccentColor(settings?.appAccentColor)
+  }, [settings?.appAccentColor, settings?.theme])
 
   useEffect(() => {
     document.documentElement.style.setProperty(

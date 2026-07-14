@@ -21,9 +21,7 @@ import {
   getTerminalWindowSearchEntries
 } from './terminal-search'
 import { Button } from '../ui/button'
-import { SettingsRow, SettingsSubsectionHeader } from './SettingsFormControls'
-import { SearchableSetting } from './SearchableSetting'
-import { FontAutocomplete } from './SettingsFormControls'
+import { SettingsSubsectionHeader } from './SettingsFormControls'
 import { TerminalFontSizeSetting } from './TerminalFontSizeSetting'
 import { TerminalAdvancedTypographyControls } from './TerminalAdvancedTypographyControls'
 import { TerminalThemeCatalogSection } from './TerminalThemeSections'
@@ -36,6 +34,7 @@ import type { UseGhosttyImportReturn } from './useGhosttyImport'
 import { WarpThemeImportModal } from './WarpThemeImportModal'
 import type { UseWarpThemeImportReturn } from './useWarpThemeImport'
 import { isWebClientLocation } from '@/hooks/useSettingsNavigationMetadata'
+import { isLikelyMonospaceFont } from '../../../../shared/font-monospace'
 import ghosttyIcon from '../../../../../resources/ghostty.svg'
 import { translate } from '@/i18n/i18n'
 
@@ -43,7 +42,7 @@ type TerminalAppearanceSectionProps = {
   settings: GlobalSettings
   updateSettings: (updates: Partial<GlobalSettings>) => void
   systemPrefersDark: boolean
-  terminalFontSuggestions: string[]
+  terminalFontSuggestions?: string[]
   onRequestFontSuggestions?: () => void
   ghostty: UseGhosttyImportReturn
   warpThemes: UseWarpThemeImportReturn
@@ -74,8 +73,6 @@ export function TerminalAppearanceSection({
   settings,
   updateSettings,
   systemPrefersDark,
-  terminalFontSuggestions,
-  onRequestFontSuggestions,
   ghostty,
   warpThemes,
   forceVisiblePrimary = false
@@ -83,7 +80,6 @@ export function TerminalAppearanceSection({
   const searchQuery = useAppStore((state) => state.settingsSearchQuery)
   const isSearching = normalizeSettingsSearchQuery(searchQuery).length > 0
   const [themeSearch, setThemeSearch] = useState('')
-  const [previewFontFamily, setPreviewFontFamily] = useState<string | null>(null)
   const showWarpThemeImport = !isWebClientLocation()
   const darkThemeSearchEntries = getTerminalDarkThemeSearchEntries()
   const lightThemeSearchEntries = getTerminalLightThemeSearchEntries()
@@ -207,33 +203,16 @@ export function TerminalAppearanceSection({
               forceVisible={forceVisiblePrimary}
             />
 
-            <SearchableSetting
-              title={translate(
-                'auto.components.settings.TerminalAppearanceSection.a408266e67',
-                'Font Family'
-              )}
-              description={terminalTypographyEntries[1]?.description}
-              keywords={
-                terminalTypographyEntries[1]?.keywords ?? ['terminal', 'typography', 'font']
-              }
-              forceVisible={forceVisiblePrimary}
-            >
-              <SettingsRow
-                label={translate(
-                  'auto.components.settings.TerminalAppearanceSection.a408266e67',
-                  'Font Family'
-                )}
-                control={
-                  <FontAutocomplete
-                    value={settings.terminalFontFamily}
-                    suggestions={terminalFontSuggestions}
-                    onRequestSuggestions={onRequestFontSuggestions}
-                    onChange={(value) => updateSettings({ terminalFontFamily: value })}
-                    onPreviewFontFamily={setPreviewFontFamily}
-                  />
-                }
-              />
-            </SearchableSetting>
+            {!isLikelyMonospaceFont(settings.appFontFamily) ? (
+              <div className="px-1 py-2">
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {translate(
+                    'auto.components.settings.TerminalAppearanceSection.nonMonospaceWarning',
+                    'The app font is not monospace. Terminal alignment and TUI layouts may be broken. Set a monospace font in Interface → App Font.'
+                  )}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {showTypographyAdvancedDisclosure ? (
@@ -257,7 +236,7 @@ export function TerminalAppearanceSection({
           themeSearch={themeSearch}
           setThemeSearch={setThemeSearch}
           updateSettings={updateSettings}
-          previewFontFamily={previewFontFamily}
+          previewFontFamily={null}
           importedHighlightSignal={warpThemes.importSignal}
           warpThemes={warpThemes}
           showThemeImport={showWarpThemeImport}

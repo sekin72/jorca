@@ -14,6 +14,7 @@ import { USAGE_PERCENTAGE_DISPLAY_SETTING_ID } from './appearance-usage-percenta
 import {
   getAppIconEntries,
   getAppearancePaneSearchEntries,
+  getAccentEntries,
   getLanguageEntries,
   getLayoutEntries,
   getSidebarEntries,
@@ -130,6 +131,7 @@ export function AppearancePane({
   const interfaceSearchEntries = [
     { title: interfaceTitle },
     ...getThemeEntries(),
+    ...getAccentEntries(),
     ...getZoomEntries(),
     ...getTypographyEntries(),
     ...(SHOW_UI_LANGUAGE_SETTING ? getLanguageEntries() : []),

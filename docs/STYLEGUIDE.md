@@ -45,6 +45,10 @@ Tokens come in pairs: a **surface** and a **foreground** that meets contrast on 
 
 The `sidebar` family expands into `--sidebar`, `--sidebar-foreground`, `--sidebar-primary`, `--sidebar-primary-foreground`, `--sidebar-accent`, `--sidebar-accent-foreground`, `--sidebar-border`, and `--sidebar-ring` — use them inside the worktree sidebar so its hover/selected/focus states stay consistent and don't bleed into other panels. `editor-surface` is its own token (not just `background`) because Monaco and the markdown editor have a slightly darker surface in dark mode to match VS Code conventions; reach for it whenever you're rendering an editor pane.
 
+### Accent color (user-customizable)
+
+Orca's chrome is monochrome by default, but users may set a single **accent color** (`settings.appAccentColor`) that overrides `--primary`, `--ring`, `--accent`, `--sidebar-primary`, `--sidebar-ring`, and `--chart-*`. When set, `applyAppAccentColor` writes these as inline CSS variables on `<html>`; when unset, the base palette applies. Surfaces (`--background`, `--card`, `--popover`, `--sidebar`, `--worktree-sidebar-*`), neutral foregrounds (`--foreground`, `--muted-foreground`), borders, git decorations, `--destructive`, `--status-success`, `--terminal-pane-title-*`, and `--tab-group-split-divider` are **never** affected by the accent — color stays reserved for state, not surfaces. See `docs/app-accent-color.md` for the full design.
+
 ### Git decoration colors
 
 For diff status, file-tree decorations, and the changes view, use the git decoration tokens (mirroring VS Code's palette so users transferring from VS Code aren't surprised):

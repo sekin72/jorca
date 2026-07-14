@@ -27,6 +27,34 @@ export const getThemeEntries = createLocalizedCatalog((): SettingsSearchEntry[] 
   }
 ])
 
+export const getAccentEntries = createLocalizedCatalog((): SettingsSearchEntry[] => [
+  {
+    title: translate('auto.components.settings.appearance.search.accent.title', 'Accent Color'),
+    description: translate(
+      'auto.components.settings.appearance.search.accent.description',
+      'Color used for the primary action, focus ring, and highlights. Surfaces stay neutral.'
+    ),
+    keywords: [
+      ...translateSearchKeyword(
+        'auto.components.settings.appearance.search.accent.accent',
+        'accent'
+      ),
+      ...translateSearchKeyword('auto.components.settings.appearance.search.accent.color', 'color'),
+      ...translateSearchKeyword(
+        'auto.components.settings.appearance.search.accent.primary',
+        'primary'
+      ),
+      ...translateSearchKeyword('auto.components.settings.appearance.search.accent.ring', 'ring'),
+      ...translateSearchKeyword('auto.components.settings.appearance.search.accent.tint', 'tint'),
+      ...translateSearchKeyword('auto.components.settings.appearance.search.accent.theme', 'theme'),
+      ...translateSearchKeyword(
+        'auto.components.settings.appearance.search.accent.highlight',
+        'highlight'
+      )
+    ]
+  }
+])
+
 export const getLanguageEntries = createLocalizedCatalog((): SettingsSearchEntry[] => [
   {
     title: translate('settings.appearance.language.title', 'Language'),
@@ -75,7 +103,7 @@ export const getZoomEntries = createLocalizedCatalog((): SettingsSearchEntry[] =
 
 export const getTypographyEntries = createLocalizedCatalog((): SettingsSearchEntry[] => [
   {
-    title: translate('auto.components.settings.appearance.search.ddb991024d', 'IDE Font'),
+    title: translate('auto.components.settings.appearance.search.ddb991024d', 'App Font'),
     description: translate(
       'auto.components.settings.appearance.search.07c7c38fac',
       'Choose the font used by the Orca interface.'
@@ -277,6 +305,7 @@ function buildAppearancePaneSearchEntries(
   return [
     ...getAppearanceSectionEntries(),
     ...getThemeEntries(),
+    ...getAccentEntries(),
     ...(SHOW_UI_LANGUAGE_SETTING ? getLanguageEntries() : []),
     ...getTypographyEntries(),
     ...getZoomEntries(),

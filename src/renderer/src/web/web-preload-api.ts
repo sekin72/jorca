@@ -70,6 +70,8 @@ import {
 import { normalizeAutoRenameBranchFromWorkDefaultOn } from '../../../shared/auto-rename-branch-from-work-settings'
 import { normalizeTerminalCursorStyleDefault } from '../../../shared/terminal-cursor-style-settings'
 import { normalizeTerminalCustomThemes } from '../../../shared/terminal-custom-themes'
+import { normalizeAppAccentColor } from '../../../shared/app-accent-color'
+import { resolveAppFontFamilyMigration } from '../../../shared/app-font-family-migration'
 import { normalizeUiLanguage } from '../../../shared/ui-language'
 import { normalizeUsagePercentageDisplay } from '../../../shared/usage-percentage-display'
 import type { RateLimitState } from '../../../shared/rate-limit-types'
@@ -493,6 +495,12 @@ function createWebPreloadApi(): Partial<PreloadApi> {
       getFloatingTerminalCwd: () => Promise.resolve(''),
       getFloatingMarkdownDirectory: () => Promise.resolve(''),
       pickCanvasFile: () => Promise.resolve(null),
+      canvasLayoutList: () => Promise.resolve([]),
+      canvasLayoutLoad: () => Promise.resolve(null),
+      canvasLayoutSave: () => Promise.resolve([]),
+      canvasLayoutDelete: () => Promise.resolve([]),
+      mainSurfaceLoad: () => Promise.resolve(null),
+      mainSurfaceSave: () => Promise.resolve(),
       pickFloatingMarkdownDocument: () => Promise.resolve(null),
       pickFloatingWorkspaceDirectory: () => Promise.resolve(null)
     },
@@ -3042,7 +3050,13 @@ function getStoredSettings(): GlobalSettings {
     ...normalizeAutoRenameBranchFromWorkDefaultOn(stored),
     ...normalizeTerminalCursorStyleDefault(stored),
     terminalCustomThemes: normalizeTerminalCustomThemes(stored.terminalCustomThemes),
-    uiLanguage: normalizeUiLanguage(stored.uiLanguage)
+    uiLanguage: normalizeUiLanguage(stored.uiLanguage),
+    appAccentColor: normalizeAppAccentColor(stored.appAccentColor),
+    ...resolveAppFontFamilyMigration({
+      appFontFamily: stored.appFontFamily,
+      terminalFontFamily: stored.terminalFontFamily,
+      appFontFamilyUnifiedFromTerminal: stored.appFontFamilyUnifiedFromTerminal
+    })
   }
   if (
     rawStoredSettings &&
@@ -3053,7 +3067,10 @@ function getStoredSettings(): GlobalSettings {
       stored.terminalCursorStyleDefaultedToBlock !==
         migratedStored.terminalCursorStyleDefaultedToBlock ||
       stored.terminalCustomThemes !== migratedStored.terminalCustomThemes ||
-      stored.uiLanguage !== migratedStored.uiLanguage)
+      stored.uiLanguage !== migratedStored.uiLanguage ||
+      stored.appAccentColor !== migratedStored.appAccentColor ||
+      stored.appFontFamily !== migratedStored.appFontFamily ||
+      stored.appFontFamilyUnifiedFromTerminal !== migratedStored.appFontFamilyUnifiedFromTerminal)
   ) {
     try {
       const parsed = JSON.parse(rawStoredSettings) as unknown
@@ -3329,7 +3346,8 @@ function mergeSettings(
     terminalCustomThemes: normalizeTerminalCustomThemes(
       updates.terminalCustomThemes ?? base.terminalCustomThemes
     ),
-    uiLanguage: normalizeUiLanguage(updates.uiLanguage ?? base.uiLanguage)
+    uiLanguage: normalizeUiLanguage(updates.uiLanguage ?? base.uiLanguage),
+    appAccentColor: normalizeAppAccentColor(updates.appAccentColor ?? base.appAccentColor)
   }
   return {
     ...merged,
