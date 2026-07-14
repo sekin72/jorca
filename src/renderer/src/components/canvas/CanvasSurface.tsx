@@ -18,15 +18,27 @@ import { useAppStore } from '../../store'
 import { focusedNodeId } from '../../store/canvas/canvas-selection-model'
 import CanvasNode from './CanvasNode'
 import { CanvasContextMenu } from './CanvasContextMenu'
+import CanvasZoomReadout from './CanvasZoomReadout'
+import CanvasMinimap from './CanvasMinimap'
+import CanvasShortcutsPane from './CanvasShortcutsPane'
 import EmptyCanvasOverlay from './EmptyCanvasOverlay'
 import { openAbsoluteFileAsCanvasNode } from './canvas-node-creation'
 import { liveKeepMountedPanelIds } from './canvas-pane-hosting'
 import { resolveNodeTab } from './canvas-node-tab-lookup'
+import { closeOrReturnCanvasNode } from './canvas-node-disposal'
 import { isMouseWheel } from './wheel-intent'
 
 type BoundStore = UseBoundStore<StoreApi<CanvasStore>>
 
-export default function CanvasSurface({ store }: { store: BoundStore }): React.JSX.Element {
+export default function CanvasSurface({
+  store,
+  surfaceId
+}: {
+  store: BoundStore
+  /** The worktree id this surface belongs to, or MAIN_SURFACE_ID for Main. Lets a
+   *  node know its home worktree so it can borrow itself onto Main. */
+  surfaceId?: string
+}): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
   const willChangeReset = useRef(0)
@@ -108,6 +120,38 @@ export default function CanvasSurface({ store }: { store: BoundStore }): React.J
         clearTimeout(willChangeReset.current)
       }
     }
+  }, [store])
+
+  // Canvas keyboard chords (Cmd on Mac, Ctrl elsewhere), capture phase so a focused
+  // terminal pane can't swallow them first (docs/main-surface.md):
+  //   Cmd/Ctrl+W → close/return the focused node   Cmd/Ctrl+0 → fit all to view.
+  useEffect(() => {
+    const isMac = navigator.userAgent.includes('Mac')
+    const onKeyDown = (e: KeyboardEvent): void => {
+      const chord = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+      if (!chord || e.shiftKey || e.altKey) {
+        return
+      }
+      // Cmd/Ctrl+0 → fit all windows to view ("where is it" — recenter on nodes).
+      if (e.key === '0') {
+        e.preventDefault()
+        e.stopPropagation()
+        store.getState().zoomToFit()
+        return
+      }
+      if (e.key !== 'w' && e.key !== 'W') {
+        return
+      }
+      const focused = focusedNodeId(store.getState())
+      if (!focused) {
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
+      closeOrReturnCanvasNode(store, focused)
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [store])
 
   // Native non-passive wheel listener so preventDefault actually suppresses the
@@ -326,12 +370,15 @@ export default function CanvasSurface({ store }: { store: BoundStore }): React.J
           pan/zoom never re-renders React. */}
       <div ref={worldRef} className="absolute left-0 top-0 origin-top-left">
         {visibleIds.map((id) => (
-          <CanvasNode key={id} store={store} nodeId={id} />
+          <CanvasNode key={id} store={store} nodeId={id} surfaceId={surfaceId} />
         ))}
       </div>
       {isFileDragOver ? (
         <div className="pointer-events-none absolute inset-0 z-20 ring-2 ring-inset ring-ring/60" />
       ) : null}
+      <CanvasZoomReadout store={store} />
+      <CanvasMinimap store={store} />
+      <CanvasShortcutsPane />
       {contextMenu ? (
         <CanvasContextMenu
           screenPoint={contextMenu.screen}

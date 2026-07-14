@@ -1411,6 +1411,9 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   const keybindings = useAppStore((s) => s.keybindings)
   const sshConnectedGeneration = useAppStore((s) => s.sshConnectedGeneration)
   const prVisibleRefreshGeneration = useAppStore((s) => s.prVisibleRefreshGeneration)
+  // While the global Main surface is showing, the underlying worktree stays active
+  // but shouldn't read as the active surface in the list (docs/main-surface.md).
+  const mainSurfaceActive = useAppStore((s) => s.mainSurfaceActive)
   const settings = useAppStore((s) => s.settings)
   const newCardStyle = settings?.experimentalNewWorktreeCardStyle === true
   const reorderRepos = useAppStore((s) => s.reorderRepos)
@@ -4819,7 +4822,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
                     isCurrentWorktree={currentWorktreeId === itemRow.worktree.id}
                     // Why: a child-active parent should look active without
                     // running active-card side effects such as SSH reconnect UI.
-                    isActiveSurface={forceActiveSurface || isActiveWorktree}
+                    isActiveSurface={!mainSurfaceActive && (forceActiveSurface || isActiveWorktree)}
                     activeSurfaceVariant={
                       isActiveWorktree && !forceActiveSurface ? activeSurfaceVariant : 'primary'
                     }

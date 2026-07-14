@@ -12,6 +12,7 @@ import { createNodesSlice } from './canvas-nodes-slice'
 import { createViewportSlice } from './canvas-viewport-slice'
 import { createSelectionSlice } from './canvas-selection-slice'
 import { createHistorySlice } from './canvas-history-slice'
+import { createArrangeSlice } from './canvas-arrange-slice'
 import { focusedNodeId } from './canvas-selection-model'
 import { sanitizeLoadedCanvasNodes, isValidPoint } from './sanitize-canvas-nodes'
 
@@ -53,6 +54,12 @@ export function createCanvasStore(): UseBoundStore<StoreApi<CanvasStore>> {
     ...createNodesSlice(set, get),
     ...createViewportSlice(set, get),
     ...createSelectionSlice(set, get),
+    ...createArrangeSlice(set, get),
+
+    clearAllNodes() {
+      get().pushHistory()
+      set({ nodes: {}, selection: [], selectionActive: false })
+    },
 
     loadWorkspaceCanvas(nodes, viewportOffset, zoomLevel) {
       // Persisted geometry is untrusted: repair/drop invalid nodes so one corrupt
@@ -138,6 +145,27 @@ export function getAllCanvasStoreEntries(): [string, UseBoundStore<StoreApi<Canv
 }
 
 // -----------------------------------------------------------------------------
+// Main surface store — a single global canvas that borrows live windows from any
+// worktree (docs/main-surface.md). Deliberately kept OUT of the per-worktree
+// registry: it has no worktree of its own, so worktree teardown never touches it
+// and it survives switching between worktrees.
+// -----------------------------------------------------------------------------
+
+let mainCanvasStore: UseBoundStore<StoreApi<CanvasStore>> | undefined
+
+export function getMainCanvasStore(): UseBoundStore<StoreApi<CanvasStore>> {
+  if (!mainCanvasStore) {
+    mainCanvasStore = createCanvasStore()
+  }
+  return mainCanvasStore
+}
+
+/** Return the Main store WITHOUT creating it (null before first use). */
+export function peekMainCanvasStore(): UseBoundStore<StoreApi<CanvasStore>> | undefined {
+  return mainCanvasStore
+}
+
+// -----------------------------------------------------------------------------
 // Render selectors
 // -----------------------------------------------------------------------------
 
@@ -156,6 +184,23 @@ function sortedNodesByZOrder(nodes: Record<CanvasNodeId, CanvasNodeState>): Canv
   return sorted
 }
 
+// Stable render order by creationIndex. Stacking is done by CSS `z-index`
+// (CanvasNode reads node.zOrder), so the DOM order must NOT follow z-order:
+// re-sorting the DOM when a click bumps a node's z-order moves the element
+// between pointerdown and pointerup and drops the click (the two-click bug).
+const creationSortedNodeCache = new WeakMap<object, CanvasNodeState[]>()
+function sortedNodesByCreationIndex(
+  nodes: Record<CanvasNodeId, CanvasNodeState>
+): CanvasNodeState[] {
+  const cached = creationSortedNodeCache.get(nodes)
+  if (cached) {
+    return cached
+  }
+  const sorted = Object.values(nodes).sort((a, b) => a.creationIndex - b.creationIndex)
+  creationSortedNodeCache.set(nodes, sorted)
+  return sorted
+}
+
 /** Stable z-ordered node ids. Re-renders only on add/remove/z-order change. */
 export function useNodeIds(store: UseBoundStore<StoreApi<CanvasStore>>): string[] {
   return useStoreWithEqualityFn(
@@ -165,10 +210,12 @@ export function useNodeIds(store: UseBoundStore<StoreApi<CanvasStore>>): string[
   )
 }
 
-/** Pure core of {@link useVisibleNodeIds}: z-ordered ids of nodes that should be
- *  mounted — those intersecting the margin-expanded viewport, plus the
- *  always-mounted exemptions (focused, pinned, and keep-mounted panels whose
- *  in-process state must survive panning). Exported for unit testing. */
+/** Pure core of {@link useVisibleNodeIds}: ids of nodes that should be mounted —
+ *  those intersecting the margin-expanded viewport, plus the always-mounted
+ *  exemptions (focused, pinned, and keep-mounted panels whose in-process state
+ *  must survive panning). Returned in STABLE creation order (not z-order) so a
+ *  focus-driven z-order change never reorders the DOM; stacking is CSS z-index.
+ *  Exported for unit testing. */
 export function selectVisibleNodeIds(
   s: Pick<
     CanvasStore,
@@ -179,7 +226,7 @@ export function selectVisibleNodeIds(
   const { nodes, viewportOffset, zoomLevel: z, containerSize } = s
   const cw = containerSize.width
   const ch = containerSize.height
-  const sorted = sortedNodesByZOrder(nodes)
+  const sorted = sortedNodesByCreationIndex(nodes)
 
   // Before the container size is known, render everything — avoids an initial
   // flash where no nodes appear while the ResizeObserver settles.

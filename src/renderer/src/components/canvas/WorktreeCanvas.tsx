@@ -10,16 +10,28 @@ import { getOrCreateCanvasStoreForWorktree } from '../../store/canvas/canvas-sto
 import { CanvasStoreProvider } from './canvas-store-context'
 import CanvasSurface from './CanvasSurface'
 import CanvasToolbar from './CanvasToolbar'
+import { CanvasLayoutsDialog } from './CanvasLayoutsDialog'
 
 const CanvasOverview = lazy(() => import('./overview/CanvasOverview'))
+const MainCanvas = lazy(() => import('./MainCanvas'))
 
 export default function WorktreeCanvas(): React.JSX.Element | null {
   const worktreeId = useActiveWorktreeId()
   const overviewActive = useAppStore((s) => s.canvasOverviewActive)
+  const mainSurfaceActive = useAppStore((s) => s.mainSurfaceActive)
   const store = useMemo(
     () => (worktreeId ? getOrCreateCanvasStoreForWorktree(worktreeId) : null),
     [worktreeId]
   )
+  // Main surface replaces the worktree canvas (like Overview), keeping the active
+  // worktree mounted underneath so its panes survive the swap.
+  if (mainSurfaceActive) {
+    return (
+      <Suspense fallback={null}>
+        <MainCanvas />
+      </Suspense>
+    )
+  }
   if (overviewActive) {
     return (
       <Suspense fallback={null}>
@@ -33,8 +45,9 @@ export default function WorktreeCanvas(): React.JSX.Element | null {
   return (
     <CanvasStoreProvider store={store}>
       <div className="relative h-full w-full">
-        <CanvasSurface store={store} />
+        <CanvasSurface store={store} surfaceId={worktreeId ?? undefined} />
         <CanvasToolbar />
+        <CanvasLayoutsDialog />
       </div>
     </CanvasStoreProvider>
   )

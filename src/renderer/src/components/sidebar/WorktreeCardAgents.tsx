@@ -24,6 +24,7 @@ import {
 import { buildAgentRowLineageTree } from '@/components/dashboard/agent-row-lineage-model'
 import { DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE } from '../../../../shared/constants'
 import { revealElementInScrollContainer } from './worktree-sidebar-reveal'
+import { revealOnMain } from '@/lib/main-surface/reveal-on-main'
 import { translate } from '@/i18n/i18n'
 
 export const SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT =
@@ -187,6 +188,12 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
           paneKey
         })
         dismissStaleAgentRowByKey(paneKey)
+        return
+      }
+      // Why: if this window's live view is borrowed onto the Main surface, reveal
+      // it there instead of activating its source worktree (docs/main-surface.md
+      // T-A7). No-op (false) when canvas is off or the window isn't borrowed.
+      if (revealOnMain(tabId)) {
         return
       }
       // Why: route through activateAndRevealWorktree so cross-repo clicks also

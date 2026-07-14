@@ -60,14 +60,18 @@ describe('selectVisibleNodeIds', () => {
     expect(selectVisibleNodeIds(s, keep)).toContain('off')
   })
 
-  it('returns ids in ascending z-order', () => {
+  it('returns ids in STABLE creation order, independent of z-order', () => {
+    // The render order must not follow z-order: focusing bumps z-order, and a
+    // DOM reorder mid-click drops the click (two-click bug). Stacking is CSS.
     const s = {
       ...base,
       nodes: {
-        top: node('top', 0, 0, { zOrder: 5 }),
-        bottom: node('bottom', 0, 0, { zOrder: 1 })
+        // Created first, but sent to the back (low z-order).
+        first: node('first', 0, 0, { zOrder: 1, creationIndex: 0 }),
+        // Created later, brought to front (high z-order, e.g. just focused).
+        second: node('second', 0, 0, { zOrder: 9, creationIndex: 1 })
       }
     }
-    expect(selectVisibleNodeIds(s)).toEqual(['bottom', 'top'])
+    expect(selectVisibleNodeIds(s)).toEqual(['first', 'second'])
   })
 })

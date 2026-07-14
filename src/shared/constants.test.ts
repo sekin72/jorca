@@ -100,11 +100,11 @@ describe('getDefaultSettings', () => {
       claude: '--dangerously-skip-permissions',
       codex: '--dangerously-bypass-approvals-and-sandbox',
       gemini: '--yolo',
+      opencode: '--yolo',
       cursor: '--yolo',
       copilot: '--yolo',
       grok: '--permission-mode bypassPermissions'
     })
-    expect(settings.agentDefaultArgs).not.toHaveProperty('opencode')
     expect(settings.agentDefaultArgs).not.toHaveProperty('kilo')
     expect(settings.agentDefaultEnv).toMatchObject({
       goose: { GOOSE_MODE: 'auto' }

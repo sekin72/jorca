@@ -4378,6 +4378,10 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
     if (worktreeId && shouldDeferActivationTerminalPrep()) {
       markInputQuietSchedulerInput()
     }
+    // Navigating to a worktree canvas exits the global Main surface (docs/main-surface.md).
+    if (get().mainSurfaceActive) {
+      set({ mainSurfaceActive: false })
+    }
 
     if (get().activeWorktreeId !== worktreeId) {
       moveFocusToRendererBeforeFocusedWebviewHidden()

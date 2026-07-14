@@ -16,6 +16,7 @@ type NodesActions = Pick<
   CanvasStoreActions,
   | 'addNode'
   | 'removeNode'
+  | 'setNodeBorrowed'
   | 'finalizeRemoveNode'
   | 'setNodeAnimationState'
   | 'moveNode'
@@ -35,10 +36,13 @@ type NodesActions = Pick<
 
 export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
   return {
-    addNode(panelId, position, size) {
+    addNode(panelId, position, size, options) {
       get().pushHistory()
       const state = get()
       const nodeSize = size ?? DEFAULT_NODE_SIZE
+      // Borrowed-onto-Main nodes carry their source worktree; plain nodes don't.
+      const sourcePatch =
+        options?.sourceWorktreeId != null ? { sourceWorktreeId: options.sourceWorktreeId } : {}
 
       // Dedupe on panelId: reposition + focus the existing node instead of
       // creating a second box for the same panel.
@@ -53,7 +57,8 @@ export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
               ...existing,
               origin: nextOrigin,
               size: nodeSize,
-              zOrder: state.nextZOrder
+              zOrder: state.nextZOrder,
+              ...sourcePatch
             }
           },
           nextZOrder: state.nextZOrder + 1,
@@ -72,7 +77,8 @@ export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
         size: nodeSize,
         zOrder: state.nextZOrder,
         creationIndex: state.nextCreationIndex,
-        animationState: 'entering'
+        animationState: 'entering',
+        ...sourcePatch
       }
       set({
         nodes: { ...state.nodes, [nodeId]: node },
@@ -82,6 +88,18 @@ export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
         selectionActive: true
       })
       return nodeId
+    },
+
+    setNodeBorrowed(id, borrowed) {
+      set((state) => {
+        const node = state.nodes[id]
+        if (!node || Boolean(node.borrowedByMain) === borrowed) {
+          return state
+        }
+        // Undefined (not false) when cleared, so it drops out of the persisted shape.
+        const patched = { ...node, borrowedByMain: borrowed ? true : undefined }
+        return { nodes: { ...state.nodes, [id]: patched } }
+      })
     },
 
     removeNode(id) {

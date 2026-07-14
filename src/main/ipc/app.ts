@@ -16,6 +16,14 @@ import { destroySystemTray } from '../tray/system-tray'
 import { authorizeExternalPath } from './filesystem-auth'
 import { pickCanvasFile } from './canvas-file-picker'
 import {
+  listCanvasLayoutNames,
+  loadCanvasLayout,
+  saveCanvasLayout,
+  deleteCanvasLayout
+} from './canvas-layouts-store'
+import { registerMainSurfaceHandlers } from './main-surface-ipc'
+import type { CanvasLayoutSnapshot } from '../../shared/canvas-node'
+import {
   ensureDefaultFloatingWorkspacePath,
   grantFloatingWorkspaceDirectory,
   resolveFloatingTerminalCwd
@@ -344,6 +352,15 @@ export function registerAppHandlers(store: Store, options: RegisterAppHandlersOp
   ipcMain.handle('app:pickCanvasFile', (event, args?: { defaultPath?: string }) =>
     pickCanvasFile(event, args)
   )
+  ipcMain.handle('app:canvasLayoutList', () => listCanvasLayoutNames())
+  ipcMain.handle('app:canvasLayoutLoad', (_event, name: string) => loadCanvasLayout(name))
+  ipcMain.handle(
+    'app:canvasLayoutSave',
+    (_event, args: { name: string; snapshot: CanvasLayoutSnapshot }) =>
+      saveCanvasLayout(args.name, args.snapshot)
+  )
+  ipcMain.handle('app:canvasLayoutDelete', (_event, name: string) => deleteCanvasLayout(name))
+  registerMainSurfaceHandlers()
   ipcMain.handle('app:pickFloatingMarkdownDocument', (event) => pickFloatingMarkdownDocument(event))
 
   ipcMain.handle('app:pickFloatingWorkspaceDirectory', (event) =>

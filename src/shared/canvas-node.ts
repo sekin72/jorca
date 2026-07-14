@@ -39,6 +39,12 @@ export const ZOOM_DEFAULT = 1.0
 /** Opaque string identifier (UUID) for a canvas node. */
 export type CanvasNodeId = string
 
+/** Reserved id for the global Main surface — a single cross-worktree canvas that
+ *  borrows live windows from any worktree. Not a real worktree: it has no runtime
+ *  of its own and is never in the per-worktree canvas registry. Used as the
+ *  persistence key and to distinguish "on Main" from a worktree canvas. */
+export const MAIN_SURFACE_ID = '__main-surface__'
+
 /** Transient animation phase used by the canvas to fade nodes in/out. Loaded
  *  nodes are forced to `idle` on restore so they don't animate on hydrate. */
 export type CanvasNodeAnimationState = 'entering' | 'exiting' | 'idle'
@@ -62,6 +68,14 @@ export type CanvasNodeState = {
    *  Presence of `preMaximizeOrigin` is the "is maximized" signal. */
   preMaximizeOrigin?: Point
   preMaximizeSize?: Size
+  /** Main surface only: the worktree that owns this node's panel + runtime. The
+   *  pane is worktree-parametric, so it mounts using this id even though the node
+   *  lives on the runtime-less Main store (docs/main-surface.md). */
+  sourceWorktreeId?: string
+  /** Source worktree canvas only: this node's live view has been borrowed onto
+   *  Main, so the source renders a non-live placeholder (single-mount invariant).
+   *  Transient — re-asserted from the Main store on load, never persisted here. */
+  borrowedByMain?: boolean
 }
 
 /** True when the node is currently maximized (has saved pre-maximize geometry). */
@@ -83,10 +97,41 @@ export type PersistedCanvasNode = {
   zOrder: number
   creationIndex: number
   isPinned?: boolean
+  /** Main surface persistence only — the worktree to reconnect the pane to on
+   *  load. Absent on per-worktree canvas nodes. */
+  sourceWorktreeId?: string
 }
 
 export type PersistedWorktreeCanvas = {
   nodes: Record<CanvasNodeId, PersistedCanvasNode>
+  viewportOffset: Point
+  zoomLevel: number
+}
+
+// -----------------------------------------------------------------------------
+// Saved layouts — named snapshots of a canvas that can be re-applied to any
+// worktree's empty canvas. Unlike the session-persisted canvas (which stores
+// tab ids that are ephemeral), a layout stores tab *content* metadata
+// (contentType + entityId like a file path) so nodes can be recreated across
+// sessions. Terminal tabs spawn fresh PTYs on load (no session restore).
+// -----------------------------------------------------------------------------
+
+/** One node's restorable description inside a saved layout. `entityId` is the
+ *  backing content reference — a file path for editors, undefined for terminals
+ *  (terminals always spawn fresh). `label` is the tab title to reproduce. */
+export type CanvasLayoutNode = {
+  contentType: 'editor' | 'terminal' | 'browser'
+  entityId?: string
+  label: string
+  origin: Point
+  size: Size
+  isPinned?: boolean
+  /** For browser nodes — the URL to reopen. */
+  url?: string
+}
+
+export type CanvasLayoutSnapshot = {
+  nodes: CanvasLayoutNode[]
   viewportOffset: Point
   zoomLevel: number
 }

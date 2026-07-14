@@ -19,5 +19,12 @@
     "text": "Gemini CLI",
     "dynamic": false,
     "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/lib/canvas-layouts.ts",
+    "kind": "object-property:label",
+    "text": "Terminal",
+    "dynamic": false,
+    "count": 1
   }
 ]

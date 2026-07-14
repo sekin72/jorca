@@ -3,13 +3,23 @@
 // empty canvas also creates a new file — this is the discoverable equivalent.
 
 import React from 'react'
-import { FolderOpen, FilePlus, SquareTerminal, Globe, LayoutGrid } from 'lucide-react'
+import {
+  FolderOpen,
+  FilePlus,
+  SquareTerminal,
+  Globe,
+  LayoutGrid,
+  LayoutPanelTop,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react'
 import {
   openFileDialogAsCanvasNode,
   createUntitledEditorCanvasNode,
   createTerminalCanvasNode,
   createBrowserCanvasNode
 } from './canvas-node-creation'
+import { saveCanvasLayout } from '@/lib/canvas-layouts'
 import { useAppStore } from '../../store'
 import { translate } from '@/i18n/i18n'
 
@@ -37,6 +47,24 @@ function ToolbarButton({
 
 export default function CanvasToolbar(): React.JSX.Element {
   const setCanvasOverviewActive = useAppStore((s) => s.setCanvasOverviewActive)
+  const setCanvasLayoutsDialogOpen = useAppStore((s) => s.setCanvasLayoutsDialogOpen)
+  const bumpCanvasLayoutsVersion = useAppStore((s) => s.bumpCanvasLayoutsVersion)
+  const open = useAppStore((s) => s.canvasToolbarOpen)
+  const setOpen = useAppStore((s) => s.setCanvasToolbarOpen)
+
+  if (!open) {
+    return (
+      <div className="absolute left-2 top-2 z-10 rounded-lg border bg-card p-1 shadow-xs">
+        <ToolbarButton
+          label={translate('auto.components.canvas.CanvasToolbar.expand', 'Show toolbar')}
+          onClick={() => setOpen(true)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </ToolbarButton>
+      </div>
+    )
+  }
+
   return (
     <div className="absolute left-2 top-2 z-10 flex items-center gap-0.5 rounded-lg border bg-card p-1 shadow-xs">
       <ToolbarButton
@@ -44,6 +72,28 @@ export default function CanvasToolbar(): React.JSX.Element {
         onClick={() => setCanvasOverviewActive(true)}
       >
         <LayoutGrid className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        label={translate('auto.components.canvas.CanvasToolbar.layouts', 'Saved layouts')}
+        onClick={() => setCanvasLayoutsDialogOpen(true)}
+      >
+        <LayoutPanelTop className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        label={translate('auto.components.canvas.CanvasToolbar.saveLayout', 'Save current layout')}
+        onClick={() => {
+          const name = window.prompt(
+            translate(
+              'auto.components.canvas.CanvasToolbar.saveLayoutPrompt',
+              'Save current canvas layout as…'
+            )
+          )
+          if (name?.trim()) {
+            void saveCanvasLayout(name.trim()).then(() => bumpCanvasLayoutsVersion())
+          }
+        }}
+      >
+        <span className="text-[10px] font-medium">S</span>
       </ToolbarButton>
       <ToolbarButton
         label={translate('auto.components.canvas.CanvasToolbar.openFile', 'Open file…')}
@@ -68,6 +118,13 @@ export default function CanvasToolbar(): React.JSX.Element {
         onClick={() => void createBrowserCanvasNode()}
       >
         <Globe className="h-4 w-4" />
+      </ToolbarButton>
+      <div className="mx-0.5 h-5 w-px bg-border" />
+      <ToolbarButton
+        label={translate('auto.components.canvas.CanvasToolbar.collapse', 'Hide toolbar')}
+        onClick={() => setOpen(false)}
+      >
+        <ChevronLeft className="h-4 w-4" />
       </ToolbarButton>
     </div>
   )

@@ -609,6 +609,23 @@ export type UISlice = {
    *  active worktree's canvas. Session-only — not persisted. See Phase 2. */
   canvasOverviewActive: boolean
   setCanvasOverviewActive: (active: boolean) => void
+  /** Whether the global Main surface (cross-worktree borrowed windows) is showing
+   *  in place of the active worktree's canvas. Session-only — the Main layout
+   *  itself persists separately (docs/main-surface.md). Cleared on worktree
+   *  switch so picking a project exits Main. */
+  mainSurfaceActive: boolean
+  setMainSurfaceActive: (active: boolean) => void
+  /** Whether the canvas toolbar is expanded. Session-only, default on — a caret
+   *  collapses it to a small handle to clear the canvas (docs/main-surface.md). */
+  canvasToolbarOpen: boolean
+  setCanvasToolbarOpen: (open: boolean) => void
+  /** Whether the Saved Canvas Layouts dialog is open. Session-only. */
+  canvasLayoutsDialogOpen: boolean
+  setCanvasLayoutsDialogOpen: (open: boolean) => void
+  /** Monotonic counter bumped when a layout is saved/deleted, so the
+   *  EmptyCanvasOverlay and dialog can re-query the list. */
+  canvasLayoutsVersion: number
+  bumpCanvasLayoutsVersion: () => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   setSidebarWidth: (width: number) => void
@@ -1016,6 +1033,14 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
   sidebarWidth: 280,
   canvasOverviewActive: false,
   setCanvasOverviewActive: (active) => set({ canvasOverviewActive: active }),
+  mainSurfaceActive: false,
+  setMainSurfaceActive: (active) => set({ mainSurfaceActive: active }),
+  canvasToolbarOpen: true,
+  setCanvasToolbarOpen: (open) => set({ canvasToolbarOpen: open }),
+  canvasLayoutsDialogOpen: false,
+  setCanvasLayoutsDialogOpen: (open) => set({ canvasLayoutsDialogOpen: open }),
+  canvasLayoutsVersion: 0,
+  bumpCanvasLayoutsVersion: () => set({ canvasLayoutsVersion: get().canvasLayoutsVersion + 1 }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setSidebarWidth: (width) => set({ sidebarWidth: width }),

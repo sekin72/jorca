@@ -4671,6 +4671,9 @@
           "cancel": "Cancelar",
           "forget": "Eliminar de Orca",
           "reconnectAndDelete": "Reconectar y eliminar"
+        },
+        "MainSurfaceSidebarEntry": {
+          "label": "Main"
         }
       },
       "shared": {
@@ -5001,7 +5004,12 @@
           "windowSidebarSummary": "Barra lateral, barra de estado y explorador de archivos",
           "statusBarCount": "{{value0}} indicadores visibles.",
           "gitIgnoredGlossary": "Archivos que coinciden con .gitignore.",
-          "statusBarDescription": "Elige qué indicadores aparecen en la barra de estado."
+          "statusBarDescription": "Elige qué indicadores aparecen en la barra de estado.",
+          "appFont": {
+            "title": "App Font",
+            "description": "Font used for the interface, editors, and terminals.",
+            "nonMonospaceWarning": "This font is not monospace. Terminal alignment and code column layout may be broken — pick a monospace font for best results."
+          }
         },
         "AutoRenameBranchFromWorkSetting": {
           "1626524572": "Nautilus",
@@ -6666,7 +6674,8 @@
           "e90afcc44f": "apagado",
           "16c471ee03": "activado",
           "typographyAdvanced": "Tipografía",
-          "dimUnfocusedPanes": "Atenuar paneles sin foco."
+          "dimUnfocusedPanes": "Atenuar paneles sin foco.",
+          "nonMonospaceWarning": "The app font is not monospace. Terminal alignment and TUI layouts may be broken. Set a monospace font in Interface → App Font."
         },
         "TerminalFontSizeSetting": {
           "9b5252c85a": "px",
@@ -7226,7 +7235,13 @@
             "d6c0a9e2f4": "grok",
             "c5b9f8d1e3": "xai",
             "usagePercentageDisplayTitle": "Porcentajes de uso",
-            "usagePercentageDisplayDescription": "Elige si los límites del proveedor muestran el porcentaje usado o restante."
+            "usagePercentageDisplayDescription": "Elige si los límites del proveedor muestran el porcentaje usado o restante.",
+            "accent": {
+              "title": "Accent Color",
+              "custom": "Custom",
+              "customDescription": "Enter a hex color, or pick Orca to clear.",
+              "description": "Color used for the primary action, focus ring, and highlights. Surfaces stay neutral."
+            }
           }
         },
         "auto": {
@@ -12947,26 +12962,80 @@
           "pin": "Pin",
           "restore": "Restore",
           "maximize": "Maximize",
-          "close": "Close"
+          "close": "Close",
+          "onMain": "On Main",
+          "onMainHint": "Click to reveal",
+          "returnToWorktree": "Return to worktree",
+          "sendToMain": "Send to Main"
         },
         "CanvasNodeContent": {
           "placeholder": "Panel"
         },
         "EmptyCanvasOverlay": {
           "title": "Empty canvas",
-          "hint": "Open a terminal, editor, or browser to place it here."
+          "hint": "Open a terminal, editor, or browser to place it here.",
+          "startFromLayout": "Start from a layout",
+          "close": "Close",
+          "continueWithout": "Continue without layout",
+          "manage": "Manage…"
         },
         "CanvasToolbar": {
           "openFile": "Open file…",
           "newFile": "New file",
           "newTerminal": "New terminal",
           "newBrowser": "New browser",
-          "overview": "Overview"
+          "overview": "Overview",
+          "layouts": "Saved layouts",
+          "saveLayout": "Save current layout",
+          "saveLayoutPrompt": "Save current canvas layout as…",
+          "expand": "Show toolbar",
+          "collapse": "Hide toolbar"
         },
         "overview": {
           "title": "Overview",
           "exit": "Exit overview",
           "empty": "No worktree canvases yet. Add nodes to a canvas to see it here."
+        },
+        "CanvasLayoutsDialog": {
+          "title": "Saved canvas layouts",
+          "namePlaceholder": "Layout name…",
+          "save": "Save",
+          "empty": "No saved layouts yet. Arrange your canvas and save it above.",
+          "load": "Load into active canvas",
+          "delete": "Delete"
+        },
+        "MainCanvas": {
+          "empty": "Send a window here from any worktree to watch it on Main.",
+          "groupByWorktree": "Group by worktree",
+          "autoGrid": "Auto grid",
+          "tidySelection": "Tidy selection into a grid"
+        },
+        "CanvasZoomReadout": {
+          "zoomOut": "Zoom out",
+          "reset": "Reset zoom to 100%",
+          "zoomIn": "Zoom in",
+          "fit": "Fit all windows to view"
+        },
+        "CanvasMinimap": {
+          "show": "Show minimap",
+          "hide": "Hide minimap"
+        },
+        "CanvasShortcutsPane": {
+          "fit": "Fit all to view",
+          "close": "Close / return window",
+          "zoom": "Zoom",
+          "scroll": "Scroll",
+          "pan": "Pan",
+          "twoFinger": "Two-finger drag",
+          "newFile": "New file",
+          "dblClick": "Double-click",
+          "maximize": "Maximize window",
+          "dblHeader": "Double-click header",
+          "menu": "Spawn menu",
+          "rightClick": "Right-click",
+          "show": "Show shortcuts",
+          "title": "Shortcuts",
+          "hide": "Hide shortcuts"
         }
       }
     },

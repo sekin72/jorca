@@ -55,6 +55,7 @@ import type {
   WorktreeDefaultTabsLaunch,
   WorktreeRemoteBranchConflictEvent
 } from '../shared/types'
+import type { CanvasLayoutSnapshot, PersistedWorktreeCanvas } from '../shared/canvas-node'
 import type { PtyModelRestoreNeededEvent } from '../shared/pty-model-restore-marker'
 import type {
   PtyRendererDeliveryHealthReply,
@@ -499,6 +500,17 @@ const api = {
       ipcRenderer.invoke('app:getFloatingMarkdownDirectory'),
     pickCanvasFile: (args?: { defaultPath?: string }): Promise<string | null> =>
       ipcRenderer.invoke('app:pickCanvasFile', args),
+    canvasLayoutList: (): Promise<string[]> => ipcRenderer.invoke('app:canvasLayoutList'),
+    canvasLayoutLoad: (name: string): Promise<CanvasLayoutSnapshot | null> =>
+      ipcRenderer.invoke('app:canvasLayoutLoad', name),
+    canvasLayoutSave: (args: { name: string; snapshot: CanvasLayoutSnapshot }): Promise<string[]> =>
+      ipcRenderer.invoke('app:canvasLayoutSave', args),
+    canvasLayoutDelete: (name: string): Promise<string[]> =>
+      ipcRenderer.invoke('app:canvasLayoutDelete', name),
+    mainSurfaceLoad: (): Promise<PersistedWorktreeCanvas | null> =>
+      ipcRenderer.invoke('app:mainSurfaceLoad'),
+    mainSurfaceSave: (snapshot: PersistedWorktreeCanvas): Promise<void> =>
+      ipcRenderer.invoke('app:mainSurfaceSave', snapshot),
     pickFloatingMarkdownDocument: (): Promise<MarkdownDocument | null> =>
       ipcRenderer.invoke('app:pickFloatingMarkdownDocument'),
     pickFloatingWorkspaceDirectory: (): Promise<string | null> =>

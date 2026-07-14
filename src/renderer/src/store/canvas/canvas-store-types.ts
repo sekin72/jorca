@@ -37,11 +37,28 @@ export type CanvasStoreState = {
   future: CanvasHistoryEntry[]
 }
 
+/** Extra fields for a node created via {@link CanvasStoreActions.addNode}.
+ *  `sourceWorktreeId` marks a Main-surface node borrowed from a worktree. */
+export type AddNodeOptions = {
+  sourceWorktreeId?: string
+}
+
 export type CanvasStoreActions = {
   // Node lifecycle
-  addNode: (panelId: string, position?: Point, size?: Size) => CanvasNodeId
+  addNode: (
+    panelId: string,
+    position?: Point,
+    size?: Size,
+    options?: AddNodeOptions
+  ) => CanvasNodeId
   removeNode: (id: CanvasNodeId) => void
+  /** Mark/unmark a source node as borrowed onto Main (renders a placeholder
+   *  while borrowed; keeps geometry for exact-position return). */
+  setNodeBorrowed: (id: CanvasNodeId, borrowed: boolean) => void
   finalizeRemoveNode: (id: CanvasNodeId) => void
+  /** Remove every node instantly (no exit animation). Used by layout-load to
+   *  clear the canvas before recreating saved nodes. */
+  clearAllNodes: () => void
   setNodeAnimationState: (id: CanvasNodeId, state: CanvasNodeAnimationState) => void
   moveNode: (id: CanvasNodeId, origin: Point) => void
   resizeNode: (id: CanvasNodeId, size: Size, origin?: Point) => void
@@ -70,6 +87,17 @@ export type CanvasStoreActions = {
   viewToCanvas: (point: Point) => Point
   viewFrame: (id: CanvasNodeId) => Rect | null
   zoomToFit: () => void
+
+  // Arrange (bulk layout)
+  /** Uniform grid of ALL nodes sized to the viewport, then zoom-to-fit. */
+  autoLayout: () => void
+  /** ALL nodes into one column per `sourceWorktreeId` (borrow order), uniform
+   *  cells, then zoom-to-fit. Main surface's "group by worktree" tidy. */
+  autoVerticalLayout: () => void
+  /** Line up the SELECTED nodes edge-to-edge along one axis, anchored top-left. */
+  stackSelected: (axis: 'row' | 'column', gap?: number) => void
+  /** Grid-arrange the SELECTED nodes, anchored top-left, preserving reading order. */
+  tidyGridSelected: (gap?: number) => void
 
   // Selection
   selectNodes: (ids: CanvasNodeId[], additive?: boolean) => void

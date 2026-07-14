@@ -24,6 +24,8 @@ import { killAllPty } from './ipc/pty'
 import { initDaemonPtyProvider, disconnectDaemon, shutdownDaemon } from './daemon/daemon-init'
 import { closeAllWatchers } from './ipc/filesystem-watcher'
 import { disposeWorktreeBaseDirectoryWatchers } from './ipc/worktree-base-directory-watcher'
+import { flushCanvasLayoutsSync } from './ipc/canvas-layouts-store'
+import { flushMainSurfaceSync } from './ipc/main-surface-store'
 import { registerCoreHandlers } from './ipc/register-core-handlers'
 import { initObservability, shutdownObservability } from './observability'
 import { registerMobileHandlers } from './ipc/mobile'
@@ -2184,6 +2186,11 @@ app.on('before-quit', () => {
   // The window close handler passes isQuitting to the renderer so it skips the
   // child-process confirmation dialog and proceeds directly to buffer capture.
   rateLimits?.stop()
+  // Why: flush any debounced canvas-layouts write so a save immediately before
+  // quit isn't lost inside the 300ms debounce window. Idempotent — a no-op when
+  // nothing is pending, and safe if before-quit is later aborted.
+  flushCanvasLayoutsSync()
+  flushMainSurfaceSync()
 })
 
 // Why: will-quit fires twice when daemon disconnect needs an async flush.

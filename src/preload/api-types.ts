@@ -17,6 +17,7 @@ import type {
 } from '../shared/local-log-tail-types'
 import type { ReadClipboardTextOptions } from '../shared/clipboard-text'
 import type { AppIdentity } from '../shared/app-identity'
+import type { CanvasLayoutSnapshot, PersistedWorktreeCanvas } from '../shared/canvas-node'
 import type {
   CreateLocalOrcaProfileArgs,
   CreateLocalOrcaProfileResult,
@@ -891,6 +892,16 @@ export type AppApi = {
    *  selected file for editor reads/writes. Used to place an existing file as a
    *  canvas node regardless of repo size. Returns the absolute path or null. */
   pickCanvasFile: (args?: { defaultPath?: string }) => Promise<string | null>
+  /** Saved canvas layouts — named snapshots that can be re-applied to any
+   *  worktree's empty canvas. Backed by canvas-layouts.json in userData. */
+  canvasLayoutList: () => Promise<string[]>
+  canvasLayoutLoad: (name: string) => Promise<CanvasLayoutSnapshot | null>
+  canvasLayoutSave: (args: { name: string; snapshot: CanvasLayoutSnapshot }) => Promise<string[]>
+  canvasLayoutDelete: (name: string) => Promise<string[]>
+  /** Global Main surface layout (cross-worktree borrowed windows). One snapshot
+   *  in main-surface.json in userData. */
+  mainSurfaceLoad: () => Promise<PersistedWorktreeCanvas | null>
+  mainSurfaceSave: (snapshot: PersistedWorktreeCanvas) => Promise<void>
   /** Opens a native picker for markdown documents, rooted in the floating
    *  workspace, and authorizes the selected file for editor reads/writes. */
   pickFloatingMarkdownDocument: () => Promise<MarkdownDocument | null>

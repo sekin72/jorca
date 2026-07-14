@@ -6,6 +6,7 @@ import React, { Suspense, useCallback, useMemo } from 'react'
 import { lazyWithRetry as lazy } from '@/lib/lazy-with-retry'
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { useAppStore } from '../../store'
+import { closeCanvasNode } from './canvas-node-disposal'
 import type { CanvasStore } from '../../store/canvas/canvas-store'
 import type { Tab } from '../../../../shared/types'
 
@@ -26,7 +27,9 @@ function CanvasNodePane({
   tab: Tab
   active: boolean
 }): React.JSX.Element {
-  const close = useCallback(() => store.getState().removeNode(nodeId), [store, nodeId])
+  // Dispose the backing tab (kills PTY / closes webview), not just the node —
+  // the canvas replaces the tab bar, so a parked process would be unreachable.
+  const close = useCallback(() => closeCanvasNode(store, nodeId), [store, nodeId])
 
   const browserTab = useAppStore((s) =>
     tab.contentType === 'browser'

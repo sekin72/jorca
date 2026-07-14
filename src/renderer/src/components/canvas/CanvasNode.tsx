@@ -3,7 +3,7 @@
 // CanvasNodeContent. Styling uses main.css tokens per docs/STYLEGUIDE.md.
 
 import React, { useEffect } from 'react'
-import { Maximize2, Minimize2, Pin, PinOff, X } from 'lucide-react'
+import { CornerUpLeft, Maximize2, Minimize2, Pin, PinOff, SendToBack, X } from 'lucide-react'
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { useStore } from 'zustand'
 import type { CanvasStore } from '../../store/canvas/canvas-store'
@@ -13,8 +13,17 @@ import { useCanvasNodeDrag } from './use-canvas-node-drag'
 import { useCanvasNodeResize } from './use-canvas-node-resize'
 import type { ResizeHandle } from './canvas-interaction-math'
 import { useNodeTab } from './canvas-node-tab-lookup'
+import { closeOrReturnCanvasNode } from './canvas-node-disposal'
 import CanvasNodeContent from './CanvasNodeContent'
 import CanvasNodePane from './CanvasNodePane'
+import { revealOnMain } from '@/lib/main-surface/reveal-on-main'
+import { returnFromMain } from '@/lib/main-surface/return-from-main'
+import { pullToMain } from '@/lib/main-surface/pull-to-main'
+import { worktreeTint } from '@/lib/main-surface/worktree-tint'
+import { sourceProjectLabel } from '@/lib/main-surface/source-worktree-label'
+import { useAppStore } from '../../store'
+import { MAIN_SURFACE_ID } from '../../../../shared/canvas-node'
+import { ExternalLink } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 
 type BoundStore = UseBoundStore<StoreApi<CanvasStore>>
@@ -71,15 +80,22 @@ function ControlButton({
 
 function CanvasNode({
   store,
-  nodeId
+  nodeId,
+  surfaceId
 }: {
   store: BoundStore
   nodeId: string
+  surfaceId?: string
 }): React.JSX.Element | null {
   const node = useStore(store, (s) => s.nodes[nodeId])
   const active = useStore(store, (s) => focusedNodeId(s) === nodeId)
   const selected = useStore(store, (s) => isSelected(s, nodeId))
   const tab = useNodeTab(node?.panelId ?? '')
+  // Source-worktree name for a borrowed Main node's badge (null otherwise). Kept
+  // above the early return so the hook order is stable (rules-of-hooks).
+  const sourceLabel = useAppStore((s) =>
+    node?.sourceWorktreeId ? sourceProjectLabel(s.repos, node.sourceWorktreeId) : null
+  )
 
   const startDrag = useCanvasNodeDrag(store, nodeId)
   const startResize = useCanvasNodeResize(store, nodeId)
@@ -107,6 +123,18 @@ function CanvasNode({
   const exiting = anim === 'exiting'
   const entering = anim === 'entering'
 
+  // Send-to-Main is offered on a real worktree surface for a node that isn't
+  // already borrowed and isn't itself a Main node (docs/main-surface.md).
+  const canSendToMain =
+    surfaceId != null &&
+    surfaceId !== MAIN_SURFACE_ID &&
+    !node.borrowedByMain &&
+    node.sourceWorktreeId == null
+
+  // Borrowed Main nodes carry a per-source tint + worktree-name badge so you can
+  // see which worktree a window came from at a glance (docs/main-surface.md T-B2/B3).
+  const tint = node.sourceWorktreeId ? worktreeTint(node.sourceWorktreeId) : null
+
   return (
     <div
       data-canvas-node={nodeId}
@@ -126,13 +154,53 @@ function CanvasNode({
     >
       <div
         className="flex h-8 shrink-0 cursor-grab items-center justify-between gap-2 border-b bg-muted/40 px-2 active:cursor-grabbing"
+        style={
+          tint ? { backgroundColor: `color-mix(in srgb, ${tint} 14%, transparent)` } : undefined
+        }
         onPointerDown={startDrag}
         onDoubleClick={() => store.getState().toggleMaximize(nodeId)}
       >
+        {tint && (
+          <span
+            className="flex min-w-0 shrink-0 items-center gap-1"
+            title={sourceLabel ?? undefined}
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: tint }}
+              aria-hidden
+            />
+            <span
+              className="max-w-[120px] truncate text-[11px] font-medium"
+              style={{ color: tint }}
+            >
+              {sourceLabel}
+            </span>
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {node.panelId}
         </span>
         <div className="flex shrink-0 items-center gap-0.5">
+          {canSendToMain && (
+            <ControlButton
+              label={translate('auto.components.canvas.CanvasNode.sendToMain', 'Send to Main')}
+              onClick={() => pullToMain(surfaceId!, nodeId)}
+            >
+              <SendToBack className="h-3 w-3" />
+            </ControlButton>
+          )}
+          {node.sourceWorktreeId != null && (
+            <ControlButton
+              label={translate(
+                'auto.components.canvas.CanvasNode.returnToWorktree',
+                'Return to worktree'
+              )}
+              onClick={() => returnFromMain(nodeId)}
+            >
+              <CornerUpLeft className="h-3 w-3" />
+            </ControlButton>
+          )}
           <ControlButton
             label={
               node.isPinned
@@ -155,7 +223,7 @@ function CanvasNode({
           </ControlButton>
           <ControlButton
             label={translate('auto.components.canvas.CanvasNode.close', 'Close')}
-            onClick={() => store.getState().removeNode(nodeId)}
+            onClick={() => closeOrReturnCanvasNode(store, nodeId)}
           >
             <X className="h-3 w-3" />
           </ControlButton>
@@ -163,7 +231,24 @@ function CanvasNode({
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {tab ? (
+        {node.borrowedByMain ? (
+          // Single-mount invariant: while borrowed onto Main, the source shows a
+          // non-live placeholder — the live pane is mounted only on Main. Click
+          // reveals it there.
+          <button
+            type="button"
+            onClick={() => revealOnMain(node.panelId)}
+            className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-muted/20 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span className="text-xs font-medium">
+              {translate('auto.components.canvas.CanvasNode.onMain', 'On Main')}
+            </span>
+            <span className="text-[10px] opacity-70">
+              {translate('auto.components.canvas.CanvasNode.onMainHint', 'Click to reveal')}
+            </span>
+          </button>
+        ) : tab ? (
           <CanvasNodePane store={store} nodeId={nodeId} tab={tab} active={active} />
         ) : (
           <CanvasNodeContent panelId={node.panelId} />
