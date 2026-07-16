@@ -8,6 +8,7 @@ import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
 import { findWorktreeById } from '@/store/slices/worktree-helpers'
 import { activateAndRevealWorktree } from './worktree-activation'
+import { revealOnWorktreeCanvas } from '@/components/canvas/reveal-on-worktree-canvas'
 import type { WorkspaceTabPaletteSearchResult } from './workspace-tab-palette-search'
 
 export type WorkspaceTabPaletteActivationFailure =
@@ -94,6 +95,8 @@ export function activateWorkspaceTabPaletteResult(
   const runtimeEnvironmentId = getRuntimeEnvironmentIdForWorktree(state, result.worktreeId)
   state.focusGroup(result.worktreeId, result.groupId)
   state.activateTab(result.tabId)
+  // If this tab lives in a canvas node, jump the camera straight to it.
+  revealOnWorktreeCanvas(result.worktreeId, result.tabId)
 
   if (result.contentType === 'terminal') {
     if (isWebRuntimeSessionActive(runtimeEnvironmentId)) {

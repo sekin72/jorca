@@ -7,7 +7,7 @@ import { CornerUpLeft, Maximize2, Minimize2, Pin, PinOff, SendToBack, X } from '
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { useStore } from 'zustand'
 import type { CanvasStore } from '../../store/canvas/canvas-store'
-import { focusedNodeId, isSelected } from '../../store/canvas/canvas-selection-model'
+import { focusedNodeId } from '../../store/canvas/canvas-selection-model'
 import { isMaximized } from '../../../../shared/canvas-node'
 import { useCanvasNodeDrag } from './use-canvas-node-drag'
 import { useCanvasNodeResize } from './use-canvas-node-resize'
@@ -16,6 +16,7 @@ import { useNodeTab } from './canvas-node-tab-lookup'
 import { closeOrReturnCanvasNode } from './canvas-node-disposal'
 import CanvasNodeContent from './CanvasNodeContent'
 import CanvasNodePane from './CanvasNodePane'
+import CanvasNodeColorPicker from './CanvasNodeColorPicker'
 import { revealOnMain } from '@/lib/main-surface/reveal-on-main'
 import { returnFromMain } from '@/lib/main-surface/return-from-main'
 import { pullToMain } from '@/lib/main-surface/pull-to-main'
@@ -89,7 +90,6 @@ function CanvasNode({
 }): React.JSX.Element | null {
   const node = useStore(store, (s) => s.nodes[nodeId])
   const active = useStore(store, (s) => focusedNodeId(s) === nodeId)
-  const selected = useStore(store, (s) => isSelected(s, nodeId))
   const tab = useNodeTab(node?.panelId ?? '')
   // Source-worktree name for a borrowed Main node's badge (null otherwise). Kept
   // above the early return so the hook order is stable (rules-of-hooks).
@@ -133,12 +133,23 @@ function CanvasNode({
 
   // Borrowed Main nodes carry a per-source tint + worktree-name badge so you can
   // see which worktree a window came from at a glance (docs/main-surface.md T-B2/B3).
-  const tint = node.sourceWorktreeId ? worktreeTint(node.sourceWorktreeId) : null
+  const sourceTint = node.sourceWorktreeId ? worktreeTint(node.sourceWorktreeId) : null
+  // User "Color Bloom" pick wins; else the Main source-worktree tint. Drives the
+  // header wash, focus glow, and minimap rectangle.
+  const accent = node.color ?? sourceTint
+
+  // Null Space window treatment: every node floats on a soft drop shadow. The
+  // focused node emits an accent glow (the node's color, else the app ring);
+  // unfocused nodes stay quiet with only a faint top-edge highlight.
+  const ringColor = accent ?? 'var(--ring)'
+  const FLOAT_SHADOW = '0 10px 30px -12px rgb(0 0 0 / 0.55)'
+  const TOP_HIGHLIGHT = 'inset 0 1px 0 0 rgb(255 255 255 / 0.06)'
+  const FOCUS_GLOW = `0 0 0 1px ${ringColor}, 0 0 18px -3px color-mix(in srgb, ${ringColor} 55%, transparent)`
 
   return (
     <div
       data-canvas-node={nodeId}
-      className="absolute flex flex-col overflow-hidden rounded-xl border bg-card shadow-xs transition-[opacity,transform] duration-150"
+      className="absolute flex flex-col overflow-hidden rounded-xl border bg-card transition-[opacity,transform] duration-150"
       style={{
         left: node.origin.x,
         top: node.origin.y,
@@ -147,32 +158,34 @@ function CanvasNode({
         zIndex: node.zOrder,
         opacity: exiting ? 0 : 1,
         transform: entering || exiting ? 'scale(0.98)' : 'scale(1)',
-        borderColor: active ? 'var(--ring)' : selected ? 'var(--border)' : 'var(--border)',
-        boxShadow: active ? '0 0 0 1px var(--ring)' : undefined
+        borderColor: active ? ringColor : 'var(--border)',
+        boxShadow: active
+          ? `${FOCUS_GLOW}, ${TOP_HIGHLIGHT}, ${FLOAT_SHADOW}`
+          : `${TOP_HIGHLIGHT}, ${FLOAT_SHADOW}`
       }}
       onPointerDown={() => store.getState().focusNode(nodeId)}
     >
       <div
-        className="flex h-8 shrink-0 cursor-grab items-center justify-between gap-2 border-b bg-muted/40 px-2 active:cursor-grabbing"
+        className="flex h-8 shrink-0 cursor-grab items-center justify-between gap-2 border-b px-2 active:cursor-grabbing"
         style={
-          tint ? { backgroundColor: `color-mix(in srgb, ${tint} 14%, transparent)` } : undefined
+          accent ? { backgroundColor: `color-mix(in srgb, ${accent} 14%, transparent)` } : undefined
         }
         onPointerDown={startDrag}
         onDoubleClick={() => store.getState().toggleMaximize(nodeId)}
       >
-        {tint && (
+        {sourceTint && (
           <span
             className="flex min-w-0 shrink-0 items-center gap-1"
             title={sourceLabel ?? undefined}
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: tint }}
+              style={{ backgroundColor: sourceTint }}
               aria-hidden
             />
             <span
               className="max-w-[120px] truncate text-[11px] font-medium"
-              style={{ color: tint }}
+              style={{ color: sourceTint }}
             >
               {sourceLabel}
             </span>
@@ -182,6 +195,7 @@ function CanvasNode({
           {node.panelId}
         </span>
         <div className="flex shrink-0 items-center gap-0.5">
+          <CanvasNodeColorPicker store={store} nodeId={nodeId} color={node.color} />
           {canSendToMain && (
             <ControlButton
               label={translate('auto.components.canvas.CanvasNode.sendToMain', 'Send to Main')}

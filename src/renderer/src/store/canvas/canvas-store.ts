@@ -9,6 +9,7 @@ import type { CanvasNodeId, CanvasNodeState } from '../../../../shared/canvas-no
 import { ZOOM_MIN, ZOOM_MAX, ZOOM_DEFAULT } from '../../../../shared/canvas-node'
 import type { CanvasStore } from './canvas-store-types'
 import { createNodesSlice } from './canvas-nodes-slice'
+import { createNodeQuerySlice } from './canvas-node-query-slice'
 import { createViewportSlice } from './canvas-viewport-slice'
 import { createSelectionSlice } from './canvas-selection-slice'
 import { createHistorySlice } from './canvas-history-slice'
@@ -48,10 +49,13 @@ export function createCanvasStore(): UseBoundStore<StoreApi<CanvasStore>> {
     containerSize: { width: 0, height: 0 },
     history: [],
     future: [],
+    snapGuides: [],
+    pendingPlacement: null,
 
     // --- Actions ---
     ...createHistorySlice(set, get),
     ...createNodesSlice(set, get),
+    ...createNodeQuerySlice(set, get),
     ...createViewportSlice(set, get),
     ...createSelectionSlice(set, get),
     ...createArrangeSlice(set, get),
@@ -59,6 +63,18 @@ export function createCanvasStore(): UseBoundStore<StoreApi<CanvasStore>> {
     clearAllNodes() {
       get().pushHistory()
       set({ nodes: {}, selection: [], selectionActive: false })
+    },
+
+    setSnapGuides(guides) {
+      // Keep the idle case a stable [] identity so subscribers don't churn.
+      if (guides.length === 0 && get().snapGuides.length === 0) {
+        return
+      }
+      set({ snapGuides: guides })
+    },
+
+    setPendingPlacement(pending) {
+      set({ pendingPlacement: pending })
     },
 
     loadWorkspaceCanvas(nodes, viewportOffset, zoomLevel) {

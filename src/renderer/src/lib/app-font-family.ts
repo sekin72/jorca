@@ -1,17 +1,21 @@
 import { DEFAULT_APP_FONT_FAMILY } from '../../../shared/constants'
 
+// Monospace fallback chain: the unified app font defaults to a monospace, so a
+// failed load of the bundled face degrades to the platform monospace, not sans.
 const APP_FONT_FALLBACKS = [
   DEFAULT_APP_FONT_FAMILY,
-  '-apple-system',
-  'BlinkMacSystemFont',
-  'Segoe UI',
-  'sans-serif'
+  'ui-monospace',
+  'SFMono-Regular',
+  'Menlo',
+  'Consolas',
+  'monospace'
 ] as const
 
 const CSS_FONT_KEYWORDS = new Set([
   'serif',
   'sans-serif',
   'monospace',
+  'ui-monospace',
   'cursive',
   'fantasy',
   'system-ui',

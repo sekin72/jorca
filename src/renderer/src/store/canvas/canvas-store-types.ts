@@ -10,8 +10,19 @@ import type {
   CanvasNodeAnimationState,
   Point,
   Rect,
-  Size
+  Size,
+  SnapGuideLine
 } from '../../../../shared/canvas-node'
+
+/** A recommended spot for a new node, surfaced as a numbered ghost. */
+export type CanvasPlacementCandidate = { point: Point; size: Size }
+
+/** Active placement-picker session: numbered candidates plus the callback that
+ *  actually creates the node once the user picks a spot. Null when idle. */
+export type PendingCanvasPlacement = {
+  candidates: CanvasPlacementCandidate[]
+  place: (candidate: CanvasPlacementCandidate) => void
+}
 
 /** Undo/redo snapshot — just the geometry + selection that user edits change. */
 export type CanvasHistoryEntry = {
@@ -35,6 +46,10 @@ export type CanvasStoreState = {
   containerSize: Size
   history: CanvasHistoryEntry[]
   future: CanvasHistoryEntry[]
+  /** Transient neighbor-alignment guides drawn during a drag; empty when idle. */
+  snapGuides: SnapGuideLine[]
+  /** Active placement-picker session (numbered ghost spots), or null when idle. */
+  pendingPlacement: PendingCanvasPlacement | null
 }
 
 /** Extra fields for a node created via {@link CanvasStoreActions.addNode}.
@@ -62,6 +77,10 @@ export type CanvasStoreActions = {
   setNodeAnimationState: (id: CanvasNodeId, state: CanvasNodeAnimationState) => void
   moveNode: (id: CanvasNodeId, origin: Point) => void
   resizeNode: (id: CanvasNodeId, size: Size, origin?: Point) => void
+  /** Replace the active drag alignment guides (empty array clears them). */
+  setSnapGuides: (guides: SnapGuideLine[]) => void
+  /** Start or clear the placement-picker session (null clears it). */
+  setPendingPlacement: (pending: PendingCanvasPlacement | null) => void
   focusNode: (id: CanvasNodeId) => void
   unfocus: () => void
   toggleMaximize: (id: CanvasNodeId) => void
@@ -69,6 +88,8 @@ export type CanvasStoreActions = {
   moveToFront: (id: CanvasNodeId) => void
   moveToBack: (id: CanvasNodeId) => void
   togglePin: (id: CanvasNodeId) => void
+  /** Set (or clear, with undefined) a node's user accent color (`#rrggbb`). */
+  setNodeColor: (id: CanvasNodeId, color: string | undefined) => void
 
   // Node queries
   nodeForPanel: (panelId: string) => CanvasNodeId | null

@@ -256,7 +256,10 @@ const persistedCanvasNodeSchema = z.object({
   size: canvasSizeSchema,
   zOrder: z.number(),
   creationIndex: z.number(),
-  isPinned: z.boolean().optional()
+  isPinned: z.boolean().optional(),
+  // z.object strips unknown keys, so a per-node color must be declared here or it
+  // vanishes on read (docs/canvas-workspace.md §7 persistence gotcha).
+  color: z.string().optional()
 })
 
 const persistedWorktreeCanvasSchema = z.object({

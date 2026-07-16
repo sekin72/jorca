@@ -94,8 +94,16 @@ export default function CanvasMinimap({ store }: { store: BoundStore }): React.J
         {layout.nodeRects.map((r) => (
           <div
             key={r.id}
-            className="absolute rounded-[1px] bg-muted-foreground/50"
-            style={{ left: r.x, top: r.y, width: Math.max(r.w, 2), height: Math.max(r.h, 2) }}
+            className={
+              r.color ? 'absolute rounded-[1px]' : 'absolute rounded-[1px] bg-muted-foreground/50'
+            }
+            style={{
+              left: r.x,
+              top: r.y,
+              width: Math.max(r.w, 2),
+              height: Math.max(r.h, 2),
+              backgroundColor: r.color ?? undefined
+            }}
           />
         ))}
         <div

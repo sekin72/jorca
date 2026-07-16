@@ -17,6 +17,9 @@ import {
 import { useAppStore } from '../../store'
 import { focusedNodeId } from '../../store/canvas/canvas-selection-model'
 import CanvasNode from './CanvasNode'
+import CanvasGrid from './CanvasGrid'
+import CanvasSnapGuides from './CanvasSnapGuides'
+import CanvasGhostPlacement from './CanvasGhostPlacement'
 import { CanvasContextMenu } from './CanvasContextMenu'
 import CanvasZoomReadout from './CanvasZoomReadout'
 import CanvasMinimap from './CanvasMinimap'
@@ -25,7 +28,8 @@ import EmptyCanvasOverlay from './EmptyCanvasOverlay'
 import { openAbsoluteFileAsCanvasNode } from './canvas-node-creation'
 import { liveKeepMountedPanelIds } from './canvas-pane-hosting'
 import { resolveNodeTab } from './canvas-node-tab-lookup'
-import { closeOrReturnCanvasNode } from './canvas-node-disposal'
+import { useAutoFocusLargestVisible } from './use-auto-focus-largest-visible'
+import { useCanvasShortcuts } from './use-canvas-shortcuts'
 import { isMouseWheel } from './wheel-intent'
 
 type BoundStore = UseBoundStore<StoreApi<CanvasStore>>
@@ -60,6 +64,9 @@ export default function CanvasSurface({
   const nodes = useStore(store, (s) => s.nodes)
   const nodeCount = Object.keys(nodes).length
   const unifiedTabsByWorktree = useAppStore((s) => s.unifiedTabsByWorktree)
+  const gridStyle = useAppStore((s) => s.settings?.canvasGridStyle ?? 'dots')
+  const autoFocusVisible = useAppStore((s) => s.settings?.canvasAutoFocusVisible ?? false)
+  useAutoFocusLargestVisible(store, autoFocusVisible)
 
   // Terminal/browser nodes must stay mounted off-screen so their PTY/webview
   // survives panning; editors may cull.
@@ -122,37 +129,7 @@ export default function CanvasSurface({
     }
   }, [store])
 
-  // Canvas keyboard chords (Cmd on Mac, Ctrl elsewhere), capture phase so a focused
-  // terminal pane can't swallow them first (docs/main-surface.md):
-  //   Cmd/Ctrl+W → close/return the focused node   Cmd/Ctrl+0 → fit all to view.
-  useEffect(() => {
-    const isMac = navigator.userAgent.includes('Mac')
-    const onKeyDown = (e: KeyboardEvent): void => {
-      const chord = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
-      if (!chord || e.shiftKey || e.altKey) {
-        return
-      }
-      // Cmd/Ctrl+0 → fit all windows to view ("where is it" — recenter on nodes).
-      if (e.key === '0') {
-        e.preventDefault()
-        e.stopPropagation()
-        store.getState().zoomToFit()
-        return
-      }
-      if (e.key !== 'w' && e.key !== 'W') {
-        return
-      }
-      const focused = focusedNodeId(store.getState())
-      if (!focused) {
-        return
-      }
-      e.preventDefault()
-      e.stopPropagation()
-      closeOrReturnCanvasNode(store, focused)
-    }
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [store])
+  useCanvasShortcuts(store)
 
   // Native non-passive wheel listener so preventDefault actually suppresses the
   // page/native zoom (React's synthetic onWheel is passive on the root).
@@ -365,6 +342,7 @@ export default function CanvasSurface({
       onDragLeave={() => setIsFileDragOver(false)}
       onDrop={onFileDrop}
     >
+      <CanvasGrid store={store} style={gridStyle} />
       {nodeCount === 0 ? <EmptyCanvasOverlay /> : null}
       {/* transform is applied imperatively (see the world-transform effect) so
           pan/zoom never re-renders React. */}
@@ -372,6 +350,8 @@ export default function CanvasSurface({
         {visibleIds.map((id) => (
           <CanvasNode key={id} store={store} nodeId={id} surfaceId={surfaceId} />
         ))}
+        <CanvasSnapGuides store={store} />
+        <CanvasGhostPlacement store={store} />
       </div>
       {isFileDragOver ? (
         <div className="pointer-events-none absolute inset-0 z-20 ring-2 ring-inset ring-ring/60" />

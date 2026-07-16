@@ -2927,6 +2927,19 @@ export type GlobalSettings = {
    *  layout with movable terminal/editor/browser windows on a pan/zoom canvas.
    *  See docs/canvas-workspace.md. Opt-in while the canvas is being built. */
   experimentalCanvas: boolean
+  /** Canvas background grid: dots, grid lines, or off. Optional so older persisted
+   *  settings default to dots at the read site. */
+  canvasGridStyle?: 'dots' | 'lines' | 'none'
+  /** Snap canvas nodes to the grid (and neighbor-alignment guides) while dragging;
+   *  hold Alt to move freely. Defaults on. */
+  canvasSnapToGrid?: boolean
+  /** Magnetic docking: windows click flush against a neighbor (with a gutter) as
+   *  you slow down over it while dragging. Defaults on. */
+  canvasMagneticDock?: boolean
+  /** Auto-activate the node filling the most viewport area as you pan/zoom. */
+  canvasAutoFocusVisible?: boolean
+  /** On node create, show numbered placement candidates instead of auto-placing. */
+  canvasPlacementPicker?: boolean
   /** Experimental: automatically sleep completed, resumable background agent terminals. */
   experimentalAgentHibernation?: boolean
   /** Milliseconds a completed agent must stay idle before hibernation can be considered. */

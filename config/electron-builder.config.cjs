@@ -47,8 +47,11 @@ const winSpeechNativeResource = {
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
-  appId: 'com.stablyai.orca',
-  productName: 'Orca',
+  // Brand is env-overridable so a side-by-side test build (e.g. ORCA_BRAND_NAME=Jorca)
+  // gets its own name + bundle id, separate from a stock Orca. Defaults keep the
+  // real release identity unchanged.
+  appId: process.env.ORCA_BRAND_APP_ID || 'com.stablyai.orca',
+  productName: process.env.ORCA_BRAND_NAME || 'Orca',
   directories: {
     buildResources: 'resources/build'
   },

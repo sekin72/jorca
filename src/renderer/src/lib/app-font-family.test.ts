@@ -2,21 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { buildAppFontFamily } from './app-font-family'
 
 describe('buildAppFontFamily', () => {
-  it('defaults to the bundled app font', () => {
+  it('defaults to the bundled monospace app font', () => {
     expect(buildAppFontFamily('')).toBe(
-      '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      '"JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace'
     )
   })
 
   it('places a custom UI font before the fallback chain', () => {
     expect(buildAppFontFamily('Inter')).toBe(
-      '"Inter", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      '"Inter", "JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace'
     )
   })
 
   it('does not duplicate the bundled font when selected explicitly', () => {
-    expect(buildAppFontFamily('Geist')).toBe(
-      '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    expect(buildAppFontFamily('JetBrains Mono')).toBe(
+      '"JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace'
     )
   })
 })

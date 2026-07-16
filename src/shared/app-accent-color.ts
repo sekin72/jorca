@@ -25,8 +25,12 @@ export type AppAccentSwatch = {
   color: string | null
 }
 
+// Null Space periwinkle: Orca's default app accent (drives --ring/--primary/etc.).
+export const DEFAULT_APP_ACCENT_COLOR = '#7c8ef0'
+
 export const APP_ACCENT_SWATCHES: readonly AppAccentSwatch[] = [
   { id: 'orca', label: 'Orca', color: null },
+  { id: 'nullspace', label: 'Null Space', color: DEFAULT_APP_ACCENT_COLOR },
   { id: 'blue', label: 'Blue', color: '#3b82f6' },
   { id: 'violet', label: 'Violet', color: '#8b5cf6' },
   { id: 'green', label: 'Green', color: '#22c55e' },

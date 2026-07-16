@@ -7,6 +7,8 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 import type { CanvasStore } from '../../store/canvas/canvas-store'
 import type { Point, Size } from '../../../../shared/canvas-node'
 import { resizeGeometry, viewDeltaToCanvas, type ResizeHandle } from './canvas-interaction-math'
+import { snapResizeDelta } from './canvas-snap'
+import { useAppStore } from '../../store'
 
 export function useCanvasNodeResize(
   store: UseBoundStore<StoreApi<CanvasStore>>,
@@ -45,7 +47,13 @@ export function useCanvasNodeResize(
           ev.clientY - s.clientY,
           store.getState().zoomLevel
         )
-        const next = resizeGeometry(s.origin, s.size, handle, delta.x, delta.y)
+        // Snap the moving edge to the grid (Alt = free) so the fixed edge stays put.
+        const snapEnabled = useAppStore.getState().settings?.canvasSnapToGrid ?? true
+        const { dx, dy } =
+          snapEnabled && !ev.altKey
+            ? snapResizeDelta(s.origin, s.size, handle, delta.x, delta.y)
+            : { dx: delta.x, dy: delta.y }
+        const next = resizeGeometry(s.origin, s.size, handle, dx, dy)
         store.getState().resizeNode(nodeId, next.size, next.origin)
       }
       const onUp = (ev: PointerEvent): void => {

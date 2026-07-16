@@ -25,8 +25,10 @@ function baseSession(canvasByWorktree: Record<string, unknown>): unknown {
 describe('canvas geometry persistence round-trip', () => {
   it('survives snapshot → session payload → schema parse → hydrate unchanged', () => {
     const source = createCanvasStore()
-    source.getState().addNode('tab-a', { x: 120, y: 60 }, { width: 300, height: 220 })
+    const aId = source.getState().addNode('tab-a', { x: 120, y: 60 }, { width: 300, height: 220 })
     source.getState().addNode('tab-b', { x: 700, y: 400 }, { width: 260, height: 180 })
+    // A per-node color must survive the schema (z.object strips unknown keys).
+    source.getState().setNodeColor(aId, '#7c8ef0')
     source.getState().zoomAroundPoint(1.4, { x: 100, y: 100 })
     const before = toPersistedCanvas(source.getState())
     expect(before).not.toBeNull()
@@ -54,6 +56,7 @@ describe('canvas geometry persistence round-trip', () => {
       expect(targetNodes[id].origin).toEqual(node.origin)
       expect(targetNodes[id].size).toEqual(node.size)
       expect(targetNodes[id].panelId).toBe(node.panelId)
+      expect(targetNodes[id].color).toBe(node.color)
     }
     expect(target.getState().zoomLevel).toBe(source.getState().zoomLevel)
     expect(target.getState().viewportOffset).toEqual(source.getState().viewportOffset)

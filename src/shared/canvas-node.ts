@@ -24,6 +24,19 @@ export type Rect = {
   size: Size
 }
 
+/** Canvas-space spacing of the snap/background grid, in canvas units. Shared by
+ *  the visual grid, node placement, and the snap-to-grid feature so everything
+ *  lines up on the same lattice. */
+export const CANVAS_GRID_SIZE = 20
+
+export type SnapGuideAxis = 'x' | 'y'
+
+/** A transient alignment rule drawn while dragging, positioned in canvas space. */
+export type SnapGuideLine = {
+  axis: SnapGuideAxis
+  position: number
+}
+
 // -----------------------------------------------------------------------------
 // Zoom bounds
 // -----------------------------------------------------------------------------
@@ -76,6 +89,9 @@ export type CanvasNodeState = {
    *  Main, so the source renders a non-live placeholder (single-mount invariant).
    *  Transient — re-asserted from the Main store on load, never persisted here. */
   borrowedByMain?: boolean
+  /** User-chosen accent for this window (`#rrggbb`) — drives its focus glow and
+   *  minimap tint. Absent = default (`--ring`, or the worktree tint on Main). */
+  color?: string
 }
 
 /** True when the node is currently maximized (has saved pre-maximize geometry). */
@@ -100,6 +116,8 @@ export type PersistedCanvasNode = {
   /** Main surface persistence only — the worktree to reconnect the pane to on
    *  load. Absent on per-worktree canvas nodes. */
   sourceWorktreeId?: string
+  /** User-chosen window accent (`#rrggbb`), persisted so tint survives reload. */
+  color?: string
 }
 
 export type PersistedWorktreeCanvas = {

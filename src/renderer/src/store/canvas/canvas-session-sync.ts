@@ -36,7 +36,8 @@ export function toPersistedCanvas(
       size: node.size,
       zOrder: node.zOrder,
       creationIndex: node.creationIndex,
-      ...(node.isPinned ? { isPinned: true } : {})
+      ...(node.isPinned ? { isPinned: true } : {}),
+      ...(node.color ? { color: node.color } : {})
     }
   }
   return { nodes, viewportOffset: state.viewportOffset, zoomLevel: state.zoomLevel }

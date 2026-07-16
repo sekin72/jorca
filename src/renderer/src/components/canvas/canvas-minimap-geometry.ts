@@ -8,8 +8,8 @@ import type { CanvasNodeState, Point, Size } from '../../../../shared/canvas-nod
 export type MinimapRect = { x: number; y: number; w: number; h: number }
 
 export type MinimapLayout = {
-  /** Node boxes in minimap-local pixels. */
-  nodeRects: (MinimapRect & { id: string })[]
+  /** Node boxes in minimap-local pixels. `color` = the node's window tint, if set. */
+  nodeRects: (MinimapRect & { id: string; color?: string })[]
   /** The current viewport (what's on screen) in minimap-local pixels. */
   viewRect: MinimapRect
   /** world→minimap transform (minimapX = (worldX - minX) * scale + padX). */
@@ -77,6 +77,7 @@ export function computeMinimapLayout(input: MinimapInput): MinimapLayout {
   return {
     nodeRects: nodeList.map((n) => ({
       id: n.id,
+      ...(n.color ? { color: n.color } : {}),
       ...project({ x: n.origin.x, y: n.origin.y, w: n.size.width, h: n.size.height })
     })),
     viewRect: project(view),

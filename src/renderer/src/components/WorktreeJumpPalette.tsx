@@ -14,6 +14,12 @@ import {
   SquareTerminal
 } from 'lucide-react'
 import { useAppStore } from '@/store'
+import { useActiveWorktree } from '@/store/selectors'
+import { joinPath } from '@/lib/path'
+import { detectLanguage } from '@/lib/language-detect'
+import { useRuntimeFileListForWorktree } from '@/components/quick-open-file-list'
+import { openFileAsCanvasNode } from '@/components/canvas/canvas-node-creation'
+import { buildCmdJFileResults, indexCmdJFiles, type CmdJFileResult } from '@/lib/cmd-j-file-results'
 import { getRepoMapFromState, useAllWorktrees } from '@/store/selectors'
 import { selectPaletteStatusInputs } from './worktree-jump-palette-status-inputs'
 import {
@@ -145,6 +151,12 @@ type WorkspaceTabPaletteItem = {
   result: WorkspaceTabPaletteSearchResult
 }
 
+type FilePaletteItem = {
+  id: string
+  type: 'file'
+  result: CmdJFileResult
+}
+
 type SettingsPaletteItem = {
   id: string
   type: 'settings'
@@ -190,6 +202,7 @@ type PaletteItem =
   | BrowserPaletteItem
   | SimulatorPaletteItem
   | WorkspaceTabPaletteItem
+  | FilePaletteItem
 
 type PaletteListEntry = PaletteItem | CreateWorktreePaletteItem | SectionHeader | HintRow
 
@@ -383,6 +396,10 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
   const issueCache = useAppStore((s) => s.issueCache)
   const migrationUnsupportedByPtyId = useAppStore((s) => s.migrationUnsupportedByPtyId)
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
+  const openFile = useAppStore((s) => s.openFile)
+  const canvasEnabled = useAppStore((s) => s.settings?.experimentalCanvas === true)
+  const activeWorktree = useActiveWorktree()
+  const activeWorktreePath = activeWorktree?.path ?? null
   const activeTabType = useAppStore((s) => s.activeTabType)
   const activeTabId = useAppStore((s) => s.activeTabId)
   const activeTabIdByWorktree = useAppStore((s) => s.activeTabIdByWorktree)
@@ -463,6 +480,25 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
   const canCreateWorktree = repos.length > 0
 
   const hasQuery = deferredQuery.trim().length > 0
+
+  // Files/docs search reuses Quick Open's runtime file list + ranking so ⌘J is a
+  // single search for tabs, agents, AND project files. Scan lazily (enabled only
+  // while typing) so opening the palette to switch worktrees doesn't trigger a
+  // file walk over local/SSH runtimes.
+  const { files: worktreeFiles } = useRuntimeFileListForWorktree({
+    enabled: visible && hasQuery,
+    worktreeId: activeWorktreeId
+  })
+  const indexedWorktreeFiles = useMemo(() => indexCmdJFiles(worktreeFiles), [worktreeFiles])
+  const fileItems = useMemo<FilePaletteItem[]>(
+    () =>
+      buildCmdJFileResults(indexedWorktreeFiles, deferredQuery).map((result) => ({
+        id: result.id,
+        type: 'file' as const,
+        result
+      })),
+    [indexedWorktreeFiles, deferredQuery]
+  )
   const isLoading = repos.length > 0 && Object.keys(worktreesByRepo).length === 0
 
   // Why: the empty-query palette mirrors sidebar filters so opening Search
@@ -955,6 +991,8 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
     const visibleOpenTabItems = hasQuery
       ? openTabItems
       : openTabItems.slice(0, EMPTY_QUERY_OPEN_TAB_CAP)
+    // Files only surface on a query (fileItems is already empty otherwise).
+    const visibleFileItems = hasQuery ? fileItems : []
     const showWorktreeHint = !hasQuery && worktreeItems.length > worktreeCap
 
     return {
@@ -962,16 +1000,18 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
       visibleProjectTargetItems,
       visibleMiddleItems,
       visibleOpenTabItems,
+      visibleFileItems,
       showWorktreeHint
     }
-  }, [worktreeItems, projectTargetItems, middleItems, openTabItems, hasQuery])
+  }, [worktreeItems, projectTargetItems, middleItems, openTabItems, fileItems, hasQuery])
 
   const selectableItems = useMemo<PaletteItem[]>(
     () => [
       ...paletteSections.visibleWorktreeItems,
       ...paletteSections.visibleProjectTargetItems,
       ...paletteSections.visibleMiddleItems,
-      ...paletteSections.visibleOpenTabItems
+      ...paletteSections.visibleOpenTabItems,
+      ...paletteSections.visibleFileItems
     ],
     [paletteSections]
   )
@@ -992,11 +1032,13 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
       visibleProjectTargetItems,
       visibleMiddleItems,
       visibleOpenTabItems,
+      visibleFileItems,
       showWorktreeHint
     } = paletteSections
     const visibleWorkspaceItemCount = visibleWorktreeItems.length + (showCreateAction ? 1 : 0)
     const populatedSectionCount = [
       visibleWorkspaceItemCount,
+      visibleFileItems.length,
       visibleProjectTargetItems.length,
       visibleMiddleItems.length,
       visibleOpenTabItems.length
@@ -1015,6 +1057,8 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
     const showProjectTargetHeader =
       hasQuery && visibleProjectTargetItems.length > 0 && populatedSectionCount > 1
     const showMiddleHeader = hasQuery && visibleMiddleItems.length > 0 && populatedSectionCount > 1
+    // Files only appear on query, so header shows whenever there's another section.
+    const showFilesHeader = visibleFileItems.length > 0 && populatedSectionCount > 1
 
     if (visibleWorkspaceItemCount > 0) {
       if (showWorktreeHeader) {
@@ -1079,6 +1123,16 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
         })
       }
       appendPaletteListEntries(entries, visibleOpenTabItems)
+    }
+    if (visibleFileItems.length > 0) {
+      if (showFilesHeader) {
+        entries.push({
+          id: '__header_files__',
+          type: 'section-header',
+          label: translate('auto.components.WorktreeJumpPalette.filesHeader', 'Files')
+        })
+      }
+      appendPaletteListEntries(entries, visibleFileItems)
     }
     return entries
   }, [hasQuery, paletteSections, showCreateAction, worktreeItems.length])
@@ -1433,6 +1487,29 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
     ]
   )
 
+  const handleSelectFile = useCallback(
+    (result: CmdJFileResult) => {
+      if (!activeWorktreeId || !activeWorktreePath) {
+        return
+      }
+      closeModal()
+      // In canvas mode a picked file becomes a canvas node, matching Quick Open
+      // (docs/canvas-workspace.md §5); otherwise it opens as an editor tab.
+      if (canvasEnabled) {
+        openFileAsCanvasNode(activeWorktreeId, activeWorktreePath, result.path)
+        return
+      }
+      openFile({
+        filePath: joinPath(activeWorktreePath, result.path),
+        relativePath: result.path,
+        worktreeId: activeWorktreeId,
+        language: detectLanguage(result.path),
+        mode: 'edit'
+      })
+    },
+    [activeWorktreeId, activeWorktreePath, canvasEnabled, openFile, closeModal]
+  )
+
   const handleSelectItem = useCallback(
     (item: PaletteItem) => {
       if (item.type === 'worktree') {
@@ -1447,12 +1524,15 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
         handleSelectWorkspaceTab(item.result)
       } else if (item.type === 'settings') {
         handleSelectSettings(item.result)
+      } else if (item.type === 'file') {
+        handleSelectFile(item.result)
       } else {
         handleSelectQuickAction(item.result)
       }
     },
     [
       handleSelectBrowserPage,
+      handleSelectFile,
       handleSelectProjectTarget,
       handleSelectQuickAction,
       handleSelectSettings,
@@ -2125,6 +2205,35 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
                           )}
                         </div>
                       </div>
+                    </div>
+                  </CommandItem>
+                )
+              }
+
+              if (entry.type === 'file') {
+                const result = entry.result
+                return (
+                  <CommandItem
+                    key={entry.id}
+                    value={entry.id}
+                    onSelect={() => handleSelectItem(entry)}
+                    className={cn(
+                      'group mx-0.5 flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left outline-none transition-[background-color,border-color,box-shadow]',
+                      'data-[selected=true]:border-border data-[selected=true]:bg-accent data-[selected=true]:text-foreground'
+                    )}
+                  >
+                    <div className="flex w-4 shrink-0 items-center justify-center self-start pt-0.5 text-muted-foreground/85">
+                      <FileText className="size-3.5" aria-hidden="true" />
+                    </div>
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="shrink-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
+                        {result.filename}
+                      </span>
+                      {result.directory ? (
+                        <span className="min-w-0 truncate text-[12px] font-medium text-muted-foreground/80">
+                          {result.directory}
+                        </span>
+                      ) : null}
                     </div>
                   </CommandItem>
                 )

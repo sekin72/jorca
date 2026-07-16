@@ -9,6 +9,8 @@ import { translate } from '@/i18n/i18n'
 
 const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
 const MOD = isMac ? '⌘' : 'Ctrl'
+const SHIFT = isMac ? '⇧' : 'Shift'
+const ALT = isMac ? '⌥' : 'Alt'
 
 type Row = { label: string; keys: string[] }
 
@@ -17,6 +19,25 @@ function shortcutRows(): Row[] {
     {
       label: translate('auto.components.canvas.CanvasShortcutsPane.fit', 'Fit all to view'),
       keys: [MOD, '0']
+    },
+    {
+      label: translate('auto.components.canvas.CanvasShortcutsPane.autoGrid', 'Auto grid layout'),
+      keys: [SHIFT, MOD, 'L']
+    },
+    {
+      label: translate(
+        'auto.components.canvas.CanvasShortcutsPane.autoVertical',
+        'Group by worktree'
+      ),
+      keys: [ALT, SHIFT, MOD, 'L']
+    },
+    {
+      label: translate('auto.components.canvas.CanvasShortcutsPane.tidy', 'Tidy selection'),
+      keys: [SHIFT, MOD, 'G']
+    },
+    {
+      label: translate('auto.components.canvas.CanvasShortcutsPane.stack', 'Stack selection'),
+      keys: [SHIFT, MOD, 'S']
     },
     {
       label: translate('auto.components.canvas.CanvasShortcutsPane.close', 'Close / return window'),

@@ -110,6 +110,12 @@ export function sanitizeLoadedCanvasNodes(
       touched = true
     }
 
+    // color renders straight into CSS — drop anything that isn't a plain hex.
+    if (node.color != null && !/^#[0-9a-f]{6}$/i.test(node.color)) {
+      delete node.color
+      touched = true
+    }
+
     nodes[key] = node
     if (touched) {
       repaired.push(key)

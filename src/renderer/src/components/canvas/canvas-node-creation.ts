@@ -2,14 +2,52 @@
 // (so the tab keeps its normal lifecycle) then places a canvas node referencing
 // the created tab id. See docs/canvas-workspace.md §5.
 
+import type { StoreApi, UseBoundStore } from 'zustand'
 import { useAppStore } from '../../store'
 import { getOrCreateCanvasStoreForWorktree } from '../../store/canvas/canvas-store'
+import type { CanvasStore } from '../../store/canvas/canvas-store'
+import { focusedNodeId } from '../../store/canvas/canvas-selection-model'
 import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import { detectLanguage } from '@/lib/language-detect'
 import { joinPath, basename } from '@/lib/path'
 import { createUntitledMarkdownFile } from '@/lib/create-untitled-markdown'
+import { recommendPlacements } from './canvas-placement'
 import type { Point } from '../../../../shared/canvas-node'
 import type { TuiAgent } from '../../../../shared/types'
+
+/**
+ * Place a freshly-created node's backing tab onto the canvas. With an explicit
+ * drop point (drag / context menu) or when the placement picker is off, the node
+ * is created immediately at that/auto position. With the picker on and no explicit
+ * point, this instead opens the numbered ghost picker; the node is created when the
+ * user picks a spot (see CanvasGhostPlacement). Returns the node id, or null when
+ * placement was deferred to the picker.
+ */
+function placeCanvasNodeOrPick(
+  store: UseBoundStore<StoreApi<CanvasStore>>,
+  tabId: string,
+  position?: Point
+): string | null {
+  const st = store.getState()
+  const pickerOn = useAppStore.getState().settings?.canvasPlacementPicker ?? false
+  if (position || !pickerOn) {
+    return st.addNode(tabId, position)
+  }
+  const candidates = recommendPlacements(
+    st.nodes,
+    focusedNodeId(st),
+    { offset: st.viewportOffset, zoom: st.zoomLevel, containerSize: st.containerSize },
+    null,
+    6
+  )
+  st.setPendingPlacement({
+    candidates,
+    place: (candidate) => {
+      store.getState().addNode(tabId, candidate.point, candidate.size)
+    }
+  })
+  return null
+}
 
 /** Open `relativePath` (under `worktreePath`) as an editor node on the worktree's
  *  canvas at `position`. Returns the created/placed node id, or null if the
@@ -35,7 +73,7 @@ export function openFileAsCanvasNode(
   if (!tab) {
     return null
   }
-  return getOrCreateCanvasStoreForWorktree(worktreeId).getState().addNode(tab.id, position)
+  return placeCanvasNodeOrPick(getOrCreateCanvasStoreForWorktree(worktreeId), tab.id, position)
 }
 
 /** Place an existing file (by absolute path) as an editor node on the active
@@ -58,7 +96,7 @@ export function openAbsoluteFileAsCanvasNode(filePath: string, position?: Point)
   if (!tab) {
     return null
   }
-  return getOrCreateCanvasStoreForWorktree(worktreeId).getState().addNode(tab.id, position)
+  return placeCanvasNodeOrPick(getOrCreateCanvasStoreForWorktree(worktreeId), tab.id, position)
 }
 
 /** Open a native OS file picker (rooted at the active worktree) and place the
@@ -108,7 +146,7 @@ export async function createUntitledEditorCanvasNode(position?: Point): Promise<
   if (!tab) {
     return null
   }
-  return getOrCreateCanvasStoreForWorktree(worktreeId).getState().addNode(tab.id, position)
+  return placeCanvasNodeOrPick(getOrCreateCanvasStoreForWorktree(worktreeId), tab.id, position)
 }
 
 /** Newest unified tab of `contentType` on `worktreeId` not present in `beforeIds`.
@@ -148,7 +186,7 @@ export async function createTerminalCanvasNode(position?: Point): Promise<string
   if (!tabId) {
     return null
   }
-  return getOrCreateCanvasStoreForWorktree(worktreeId).getState().addNode(tabId, position)
+  return placeCanvasNodeOrPick(getOrCreateCanvasStoreForWorktree(worktreeId), tabId, position)
 }
 
 /** Create a new browser node on the active worktree's canvas at `position`. */
@@ -164,7 +202,7 @@ export async function createBrowserCanvasNode(position?: Point): Promise<string 
   if (!tabId) {
     return null
   }
-  return getOrCreateCanvasStoreForWorktree(worktreeId).getState().addNode(tabId, position)
+  return placeCanvasNodeOrPick(getOrCreateCanvasStoreForWorktree(worktreeId), tabId, position)
 }
 
 /** Launch a TUI agent (Claude/opencode/Gemini/…) as a terminal node on the active
@@ -180,5 +218,9 @@ export function createAgentCanvasNode(agent: TuiAgent, position?: Point): string
   if (!result?.tabId) {
     return null
   }
-  return getOrCreateCanvasStoreForWorktree(worktreeId).getState().addNode(result.tabId, position)
+  return placeCanvasNodeOrPick(
+    getOrCreateCanvasStoreForWorktree(worktreeId),
+    result.tabId,
+    position
+  )
 }

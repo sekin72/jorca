@@ -5,14 +5,25 @@ import { useCallback, useRef } from 'react'
 import type React from 'react'
 import type { StoreApi, UseBoundStore } from 'zustand'
 import type { CanvasStore } from '../../store/canvas/canvas-store'
-import type { Point } from '../../../../shared/canvas-node'
+import type { Point, Size, Rect, SnapGuideLine } from '../../../../shared/canvas-node'
 import { viewDeltaToCanvas } from './canvas-interaction-math'
+import { snapNodeDrag } from './canvas-snap'
+import { magneticDock, applyDock, DOCK_DWELL_SPEED } from './canvas-magnetic-dock'
+import { useAppStore } from '../../store'
 
 export function useCanvasNodeDrag(
   store: UseBoundStore<StoreApi<CanvasStore>>,
   nodeId: string
 ): (e: React.PointerEvent) => void {
-  const start = useRef<{ clientX: number; clientY: number; origin: Point } | null>(null)
+  const start = useRef<{
+    clientX: number
+    clientY: number
+    origin: Point
+    size: Size
+    others: Rect[]
+  } | null>(null)
+  // Last pointer sample, for the dwell/velocity gate on magnetic docking.
+  const lastMove = useRef<{ t: number; x: number; y: number } | null>(null)
 
   return useCallback(
     (e: React.PointerEvent) => {
@@ -29,7 +40,22 @@ export function useCanvasNodeDrag(
       }
       e.stopPropagation()
       store.getState().focusNode(nodeId)
-      start.current = { clientX: e.clientX, clientY: e.clientY, origin: node.origin }
+      // Neighbor geometry is fixed for the duration of a single-node drag, so
+      // collect the other nodes' rects once here for snap-guide alignment.
+      const others: Rect[] = []
+      for (const [id, n] of Object.entries(store.getState().nodes)) {
+        if (id !== nodeId) {
+          others.push({ origin: n.origin, size: n.size })
+        }
+      }
+      start.current = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        origin: node.origin,
+        size: node.size,
+        others
+      }
+      lastMove.current = null
 
       const el = e.currentTarget as HTMLElement
       el.setPointerCapture(e.pointerId)
@@ -39,15 +65,45 @@ export function useCanvasNodeDrag(
         if (!s) {
           return
         }
+        // Pointer speed (screen px/ms). Magnetic docking only engages once the
+        // drag slows below the dwell threshold, so a fast fling passes a neighbor
+        // by instead of getting grabbed.
+        const now = performance.now()
+        let speed = Infinity
+        const lm = lastMove.current
+        if (lm && now > lm.t) {
+          speed = Math.hypot(ev.clientX - lm.x, ev.clientY - lm.y) / (now - lm.t)
+        }
+        lastMove.current = { t: now, x: ev.clientX, y: ev.clientY }
+
         const delta = viewDeltaToCanvas(
           ev.clientX - s.clientX,
           ev.clientY - s.clientY,
           store.getState().zoomLevel
         )
-        store.getState().moveNode(nodeId, { x: s.origin.x + delta.x, y: s.origin.y + delta.y })
+        const raw = { x: s.origin.x + delta.x, y: s.origin.y + delta.y }
+        // Read settings live so toggling Alt / settings mid-drag responds at once.
+        // Alt = free move (no grid snap, no dock).
+        if (ev.altKey) {
+          store.getState().moveNode(nodeId, raw)
+          store.getState().setSnapGuides([])
+          return
+        }
+        const settings = useAppStore.getState().settings
+        const snapEnabled = settings?.canvasSnapToGrid ?? true
+        const dockEnabled = settings?.canvasMagneticDock ?? true
+        let result: { origin: Point; guides: SnapGuideLine[] } = snapEnabled
+          ? snapNodeDrag(raw, s.size, s.others)
+          : { origin: raw, guides: [] }
+        if (dockEnabled && speed < DOCK_DWELL_SPEED) {
+          result = applyDock(result, magneticDock(raw, s.size, s.others))
+        }
+        store.getState().moveNode(nodeId, result.origin)
+        store.getState().setSnapGuides(result.guides)
       }
       const onUp = (ev: PointerEvent): void => {
         start.current = null
+        store.getState().setSnapGuides([])
         el.releasePointerCapture(ev.pointerId)
         el.removeEventListener('pointermove', onMove)
         el.removeEventListener('pointerup', onUp)

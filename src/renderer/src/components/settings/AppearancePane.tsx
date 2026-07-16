@@ -1,12 +1,13 @@
 import type React from 'react'
 import { useLayoutEffect, useState } from 'react'
-import { AppWindow, PanelLeft, TerminalSquare } from 'lucide-react'
+import { AppWindow, LayoutGrid, PanelLeft, TerminalSquare } from 'lucide-react'
 
 import type { GlobalSettings } from '../../../../shared/types'
 
 import { AppearanceSection } from './AppearanceSection'
 import { AppearanceInterfaceSection } from './AppearanceInterfaceSection'
 import { AppearanceWindowSidebarSection } from './AppearanceWindowSidebarSection'
+import { AppearanceCanvasSection } from './AppearanceCanvasSection'
 import { SearchableSetting } from './SearchableSetting'
 import { matchesSettingsSearch, normalizeSettingsSearchQuery } from './settings-search'
 import { useAppStore } from '../../store'
@@ -53,7 +54,7 @@ type AppearancePaneProps = {
   warpThemes: UseWarpThemeImportReturn
 }
 
-type AppearanceSectionKey = 'interface' | 'terminal' | 'window'
+type AppearanceSectionKey = 'interface' | 'terminal' | 'window' | 'canvas'
 
 function resolveThemeSummary(theme: GlobalSettings['theme']): string {
   if (theme === 'system') {
@@ -126,6 +127,11 @@ export function AppearancePane({
     'auto.components.settings.AppearancePane.windowSidebarSummary',
     'Sidebar, status bar, and file explorer'
   )
+  const canvasTitle = translate('auto.components.settings.AppearancePane.canvasTitle', 'Canvas')
+  const canvasSummary = translate(
+    'auto.components.settings.AppearancePane.canvasSummary',
+    'Grid, snapping, and window placement'
+  )
 
   // Search-entry buckets per section so a query can force-open the matching one.
   const interfaceSearchEntries = [
@@ -154,9 +160,36 @@ export function AppearancePane({
     getWorkspaceCardLayoutEntry()
   ]
 
+  // Canvas section is opt-in (experimentalCanvas); its search keywords cover the
+  // grid/snap/placement controls it holds.
+  const canvasSearchEntries = [
+    { title: canvasTitle, description: canvasSummary },
+    {
+      title: translate(
+        'auto.components.settings.AppearanceCanvas.gridStyle.label',
+        'Background grid'
+      )
+    },
+    { title: translate('auto.components.settings.AppearanceCanvas.snap.label', 'Snap to grid') },
+    {
+      title: translate(
+        'auto.components.settings.AppearanceCanvas.autoFocus.label',
+        'Auto-focus largest window'
+      )
+    },
+    {
+      title: translate(
+        'auto.components.settings.AppearanceCanvas.placementPicker.label',
+        'Recommend where new windows go'
+      )
+    }
+  ]
+
   const interfaceMatches = matchesSettingsSearch(searchQuery, interfaceSearchEntries)
   const terminalMatches = matchesSettingsSearch(searchQuery, terminalSearchEntries)
   const windowMatches = matchesSettingsSearch(searchQuery, windowSearchEntries)
+  const canvasMatches =
+    settings.experimentalCanvas && matchesSettingsSearch(searchQuery, canvasSearchEntries)
   const interfaceLabelMatches = matchesSettingsSearch(searchQuery, { title: interfaceTitle })
   const terminalLabelMatches = matchesSettingsSearch(searchQuery, { title: terminalTitle })
   const windowLabelMatches = matchesSettingsSearch(searchQuery, {
@@ -170,11 +203,13 @@ export function AppearancePane({
   // shows exactly one manually-chosen section.
   function isSectionOpen(key: AppearanceSectionKey): boolean {
     if (isSearching) {
-      return key === 'interface'
-        ? interfaceMatches
-        : key === 'terminal'
-          ? terminalMatches
-          : windowMatches
+      const matches: Record<AppearanceSectionKey, boolean> = {
+        interface: interfaceMatches,
+        terminal: terminalMatches,
+        window: windowMatches,
+        canvas: canvasMatches
+      }
+      return matches[key]
     }
     return manuallyOpenSection === key
   }
@@ -257,6 +292,21 @@ export function AppearancePane({
             updateSettings={updateSettings}
             forceVisiblePrimary={windowLabelMatches}
           />
+        </AppearanceSection>
+      ) : null}
+
+      {/* Canvas is opt-in via experimentalCanvas (canvasMatches folds in that
+          gate), so it only appears when the experimental canvas is enabled. */}
+      {canvasMatches ? (
+        <AppearanceSection
+          id="canvas"
+          icon={<LayoutGrid aria-hidden="true" />}
+          title={canvasTitle}
+          summary={canvasSummary}
+          open={isSectionOpen('canvas')}
+          onToggle={() => toggleSection('canvas')}
+        >
+          <AppearanceCanvasSection settings={settings} updateSettings={updateSettings} />
         </AppearanceSection>
       ) : null}
 

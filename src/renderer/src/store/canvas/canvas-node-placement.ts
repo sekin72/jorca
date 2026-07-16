@@ -1,12 +1,18 @@
 // Pure geometry helpers for placing new canvas nodes and default node sizing.
 
 import type { CanvasNodeId, CanvasNodeState, Point, Size } from '../../../../shared/canvas-node'
+import { CANVAS_GRID_SIZE } from '../../../../shared/canvas-node'
 
 /** Default size for a freshly spawned node when the caller gives none. */
 export const DEFAULT_NODE_SIZE: Size = { width: 720, height: 480 }
 
-/** Offset each cascade step takes when the preferred spot is occupied. */
-const CASCADE_STEP = 36
+/** Offset each cascade step takes when the preferred spot is occupied. A grid
+ *  multiple so every cascaded candidate stays aligned to the snap grid. */
+const CASCADE_STEP = 2 * CANVAS_GRID_SIZE
+
+function snapToGrid(v: number): number {
+  return Math.round(v / CANVAS_GRID_SIZE) * CANVAS_GRID_SIZE
+}
 const MAX_CASCADE = 40
 
 export function generateId(): string {
@@ -37,7 +43,7 @@ export function findFreePosition(
   const others = Object.values(nodes)
   let base: Point
   if (preferred) {
-    base = { ...preferred }
+    base = { x: snapToGrid(preferred.x), y: snapToGrid(preferred.y) }
   } else if (anchorId && nodes[anchorId]) {
     const a = nodes[anchorId]
     base = { x: a.origin.x + CASCADE_STEP, y: a.origin.y + CASCADE_STEP }

@@ -19,6 +19,7 @@ import { TASK_PROVIDERS } from './task-providers'
 import { DEFAULT_WORKTREE_CARD_PROPERTIES } from './worktree-card-properties'
 import { getDefaultSourceControlAiSettings } from './source-control-ai'
 import { DEFAULT_APP_ICON_ID } from './app-icon'
+import { DEFAULT_APP_ACCENT_COLOR } from './app-accent-color'
 import { DEFAULT_OPEN_IN_APPLICATIONS } from './open-in-applications'
 import { DEFAULT_BROWSER_PAGE_ZOOM_LEVEL } from './browser-page-zoom'
 import { DEFAULT_DISABLED_TUI_AGENTS } from './tui-agent-selection'
@@ -45,7 +46,10 @@ export {
 } from './worktree-card-properties'
 
 export const SCHEMA_VERSION = 1
-export const DEFAULT_APP_FONT_FAMILY = 'Geist'
+// Bundled monospace (JetBrainsMono-Variable.woff2). The app font is unified
+// across UI + editors + terminals, so the default is a monospace to keep
+// terminal TUIs (Claude/Codex/Gemini box-drawing) aligned out of the box.
+export const DEFAULT_APP_FONT_FAMILY = 'JetBrains Mono'
 export const DEFAULT_SHOW_SLEEPING_WORKSPACES = true
 export const DEFAULT_HIDE_SLEEPING_WORKSPACES = false
 export const DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE: AgentActivityDisplayMode = 'compact'
@@ -199,6 +203,7 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     branchPrefixCustom: '',
     enableGitHubAttribution: false,
     theme: 'system',
+    appAccentColor: DEFAULT_APP_ACCENT_COLOR,
     leftSidebarAppearanceMode: 'default',
     leftSidebarTintColor: DEFAULT_LEFT_SIDEBAR_TINT_COLOR,
     leftSidebarTintOpacity: DEFAULT_LEFT_SIDEBAR_TINT_OPACITY,
@@ -368,6 +373,11 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     experimentalActivityDefaultedOffForAllUsers: true,
     experimentalTerminalAttention: false,
     experimentalCanvas: false,
+    canvasGridStyle: 'dots',
+    canvasSnapToGrid: true,
+    canvasMagneticDock: true,
+    canvasAutoFocusVisible: false,
+    canvasPlacementPicker: false,
     experimentalAgentHibernation: false,
     agentHibernationIdleMs: 30 * 60 * 1000,
     experimentalNewWorktreeCardStyle: false,

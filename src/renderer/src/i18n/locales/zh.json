@@ -1848,7 +1848,8 @@
         "workspaceTabMissing": "标签页不再存在",
         "projectsGroupsHeader": "项目和分组",
         "projectBadge": "项目",
-        "repoGroupBadge": "仓库组"
+        "repoGroupBadge": "仓库组",
+        "filesHeader": "Files"
       },
       "github": {
         "pr": {
@@ -4994,7 +4995,9 @@
             "title": "App Font",
             "description": "Font used for the interface, editors, and terminals.",
             "nonMonospaceWarning": "This font is not monospace. Terminal alignment and code column layout may be broken — pick a monospace font for best results."
-          }
+          },
+          "canvasTitle": "Canvas",
+          "canvasSummary": "Grid, snapping, and window placement"
         },
         "AutoRenameBranchFromWorkSetting": {
           "1626524572": "Nautilus",
@@ -9046,6 +9049,31 @@
         "TerminalInteractionSection": {
           "567633ff50": "Right-click pastes the clipboard into the terminal. Control-click to open the context menu.",
           "c64497148a": "Right-click pastes the clipboard. Control-click opens the context menu."
+        },
+        "AppearanceCanvas": {
+          "gridStyle": {
+            "label": "Background grid",
+            "description": "Show a dotted or lined grid behind the canvas.",
+            "dots": "Dots",
+            "lines": "Lines",
+            "none": "None"
+          },
+          "snap": {
+            "label": "Snap to grid",
+            "description": "Align windows to the grid and neighbors while dragging. Hold Alt to move freely."
+          },
+          "autoFocus": {
+            "label": "Auto-focus largest window",
+            "description": "Activate the window filling the most visible area as you pan and zoom."
+          },
+          "placementPicker": {
+            "label": "Recommend where new windows go",
+            "description": "On create, show numbered spots to pick from. Off places windows automatically."
+          },
+          "magneticDock": {
+            "label": "Magnetic docking",
+            "description": "Windows click flush beside a neighbor as you slow down on it. Hold Alt to move freely."
+          }
         }
       },
       "right": {
@@ -13035,7 +13063,15 @@
           "rightClick": "Right-click",
           "show": "Show shortcuts",
           "title": "Shortcuts",
-          "hide": "Hide shortcuts"
+          "hide": "Hide shortcuts",
+          "autoGrid": "Auto grid layout",
+          "autoVertical": "Group by worktree",
+          "tidy": "Tidy selection",
+          "stack": "Stack selection"
+        },
+        "CanvasNodeColorPicker": {
+          "label": "Window color",
+          "default": "Default"
         }
       }
     },

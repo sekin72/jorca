@@ -28,10 +28,7 @@ type NodesActions = Pick<
   | 'moveToFront'
   | 'moveToBack'
   | 'togglePin'
-  | 'nodeForPanel'
-  | 'sortedNodesByCreationOrder'
-  | 'nextNode'
-  | 'previousNode'
+  | 'setNodeColor'
 >
 
 export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
@@ -284,44 +281,15 @@ export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
       })
     },
 
-    nodeForPanel(panelId) {
-      return Object.values(get().nodes).find((n) => n.panelId === panelId)?.id ?? null
-    },
-
-    sortedNodesByCreationOrder() {
-      return Object.values(get().nodes).sort((a, b) => a.creationIndex - b.creationIndex)
-    },
-
-    nextNode() {
-      const focused = focusedNodeId(get())
-      const sorted = get().sortedNodesByCreationOrder()
-      if (sorted.length === 0) {
-        return null
-      }
-      if (!focused) {
-        return sorted[0].id
-      }
-      const i = sorted.findIndex((n) => n.id === focused)
-      if (i === -1) {
-        return sorted[0].id
-      }
-      return sorted[(i + 1) % sorted.length].id
-    },
-
-    previousNode() {
-      const focused = focusedNodeId(get())
-      const sorted = get().sortedNodesByCreationOrder()
-      if (sorted.length === 0) {
-        return null
-      }
-      if (!focused) {
-        return sorted.at(-1)!.id
-      }
-      const i = sorted.findIndex((n) => n.id === focused)
-      if (i === -1) {
-        return sorted.at(-1)!.id
-      }
-      return sorted[(i - 1 + sorted.length) % sorted.length].id
+    setNodeColor(id, color) {
+      set((state) => {
+        const node = state.nodes[id]
+        if (!node || node.color === color) {
+          return state
+        }
+        // Undefined (not empty) when cleared, so it drops out of the persisted shape.
+        return { nodes: { ...state.nodes, [id]: { ...node, color: color || undefined } } }
+      })
     }
   }
 }

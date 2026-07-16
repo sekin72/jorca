@@ -16,6 +16,14 @@
 }
 
 @font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/JetBrainsMono-Variable.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Orca Nerd Font Symbols';
   src: url('./fonts/SymbolsNerdFontMono-Regular.woff2') format('woff2');
   font-weight: 400;
@@ -124,7 +132,7 @@
 /* ── Light Mode ──────────────────────────────────────── */
 
 :root {
-  --app-font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --app-font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --font-sans: var(--app-font-family);
   --font-mono:
     'SF Mono', SFMono-Regular, ui-monospace, 'Cascadia Code', Menlo, Consolas, 'Liberation Mono',
@@ -150,6 +158,10 @@
   --border: #e5e5e5;
   --input: #e5e5e5;
   --ring: #a1a1a1;
+  /* Canvas background grid dots/lines — low-contrast so they read behind nodes
+     without competing with content. */
+  --grid-dot: rgb(0 0 0 / 0.12);
+  --grid-line: rgb(0 0 0 / 0.06);
   --terminal-pane-locate: var(--color-blue-600);
   --ai-action-accent: var(--color-violet-500);
   --status-success: #15803d;
@@ -214,18 +226,21 @@
 /* ── Dark Mode ───────────────────────────────────────── */
 
 .dark {
-  --background: #0a0a0a;
+  /* Null Space identity: indigo-tinted near-black neutrals. The periwinkle accent
+     itself is the app-wide default accent (constants.ts → DEFAULT_APP_ACCENT_COLOR),
+     applied via inline styles so the accent picker / "Orca" swatch stay in control. */
+  --background: #08090e;
   --editor-surface: #1e1e1e;
   --foreground: #fafafa;
-  --card: #171717;
+  --card: #14151d;
   --card-foreground: #fafafa;
-  --popover: #171717;
+  --popover: #14151d;
   --popover-foreground: #fafafa;
   --primary: #e5e5e5;
   --primary-foreground: #171717;
-  --secondary: #262626;
+  --secondary: #22242e;
   --secondary-foreground: #fafafa;
-  --muted: #262626;
+  --muted: #22242e;
   --muted-foreground: #a1a1a1;
   --accent: #404040;
   --accent-foreground: #fafafa;
@@ -234,6 +249,8 @@
   --border: rgb(255 255 255 / 0.07);
   --input: rgb(255 255 255 / 0.15);
   --ring: #737373;
+  --grid-dot: rgb(255 255 255 / 0.14);
+  --grid-line: rgb(255 255 255 / 0.07);
   --terminal-pane-locate: var(--color-blue-400);
   --ai-action-accent: var(--color-violet-400);
   --status-success: #86efac;
@@ -246,19 +263,19 @@
   --chart-5: var(--color-blue-800);
   /* Why: light mode sets worktree-sidebar to secondary (#f5f5f5); mirror that
      lift in dark mode so the panel reads clearly above #0a0a0a canvas. */
-  --worktree-sidebar: #2a2a2a;
+  --worktree-sidebar: #24262e;
   --worktree-sidebar-foreground: #fafafa;
-  --worktree-sidebar-accent: #353535;
+  --worktree-sidebar-accent: #313340;
   --worktree-sidebar-accent-foreground: #fafafa;
   /* Match --border / --sidebar-border (7%) so the left sidebar's divider lines
      aren't brighter than the rest of the UI in dark mode (#5906). */
   --worktree-sidebar-border: rgb(255 255 255 / 0.07);
   --worktree-sidebar-ring: #737373;
-  --sidebar: #171717;
+  --sidebar: #14151d;
   --sidebar-foreground: #fafafa;
   --sidebar-primary: #1447e6;
   --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #262626;
+  --sidebar-accent: #22242e;
   --sidebar-accent-foreground: #fafafa;
   --sidebar-border: rgb(255 255 255 / 0.07);
   --sidebar-ring: #525252;
