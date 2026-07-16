@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
@@ -25,6 +25,7 @@ import { buildAgentRowLineageTree } from '@/components/dashboard/agent-row-linea
 import { DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE } from '../../../../shared/constants'
 import { revealElementInScrollContainer } from './worktree-sidebar-reveal'
 import { revealOnMain } from '@/lib/main-surface/reveal-on-main'
+import { useWorktreeAgentExpansionState } from './worktree-card-agents-expansion-state'
 import { translate } from '@/i18n/i18n'
 
 export const SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT =
@@ -238,13 +239,24 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
     [agents]
   )
   const hasLineage = childrenByParentPaneKey.size > 0
-  const [collapsedLineageParents, setCollapsedLineageParents] = useState<ReadonlySet<string>>(
-    () => new Set()
-  )
-  const [compactRootListExpanded, setCompactRootListExpanded] = useState(false)
+  // Why: keep disclosure state out of raw local useState so the WorktreeCard
+  // remount that fires on virtualizer recycle or a sibling child-worktrees
+  // toggle no longer resets it (which read as one section expanding the other).
+  const {
+    collapsedLineageParents,
+    compactRootListExpanded,
+    toggleLineageParent: toggleLineageParentState,
+    toggleCompactRootList
+  } = useWorktreeAgentExpansionState(worktreeId)
 
+  // Why: reveal only on a genuine user collapse→expand within this mount.
+  // Seeding an already-expanded panel from the durable cache on a remount must
+  // not re-trigger the reveal scroll, or recycled cards would fight the scroll.
+  const previousCompactExpandedRef = useRef(compactRootListExpanded)
   useLayoutEffect(() => {
-    if (compactRootListExpanded && agentActivityDisplayMode === 'compact') {
+    const wasExpanded = previousCompactExpandedRef.current
+    previousCompactExpandedRef.current = compactRootListExpanded
+    if (!wasExpanded && compactRootListExpanded && agentActivityDisplayMode === 'compact') {
       dispatchSuppressScrollAdjustment()
       // Why: defer the reveal scroll out of the expand commit. Running it inline
       // forces a synchronous sidebar layout that blocks the animation's opening
@@ -257,18 +269,13 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
     }
     return undefined
   }, [agentActivityDisplayMode, compactRootListExpanded])
-  const toggleLineageParent = useCallback((paneKey: string) => {
-    dispatchSuppressScrollAdjustment()
-    setCollapsedLineageParents((current) => {
-      const next = new Set(current)
-      if (next.has(paneKey)) {
-        next.delete(paneKey)
-      } else {
-        next.add(paneKey)
-      }
-      return next
-    })
-  }, [])
+  const toggleLineageParent = useCallback(
+    (paneKey: string) => {
+      dispatchSuppressScrollAdjustment()
+      toggleLineageParentState(paneKey)
+    },
+    [toggleLineageParentState]
+  )
 
   const stopBubble = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -452,7 +459,7 @@ const WorktreeCardAgentsBody = React.memo(function WorktreeCardAgentsBody({
               expanded={compactRootListExpanded}
               onToggle={() => {
                 dispatchSuppressScrollAdjustment()
-                setCompactRootListExpanded((expanded) => !expanded)
+                toggleCompactRootList()
               }}
             />
             <CompactAgentExpansion expanded={compactRootListExpanded}>
