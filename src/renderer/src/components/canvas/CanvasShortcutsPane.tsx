@@ -1,48 +1,65 @@
 // Shortcuts cheat-sheet pane (docs/main-surface.md T-C3), docked bottom-left.
-// A curated, platform-aware list of the canvas's keyboard chords and gestures.
-// Collapsible to a keyboard-icon handle. Static list (Orca has no canvas keymap
-// registry to drive it) — keep in sync with CanvasSurface / CanvasNode bindings.
+// The keyboard chords are resolved live from Orca's keybindings registry (scope
+// 'canvas'), so the list stays in sync when they're rebound in Settings. Pointer
+// gestures (zoom/pan/double-click) have no registry entry and stay static.
 
 import React, { useState } from 'react'
 import { Keyboard, X } from 'lucide-react'
+import {
+  formatKeybinding,
+  getEffectiveKeybindingsForAction,
+  type KeybindingActionId
+} from '../../../../shared/keybindings'
+import { getShortcutPlatform } from '@/lib/shortcut-platform'
+import { useAppStore } from '../../store'
 import { translate } from '@/i18n/i18n'
 
 const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
 const MOD = isMac ? '⌘' : 'Ctrl'
-const SHIFT = isMac ? '⇧' : 'Shift'
-const ALT = isMac ? '⌥' : 'Alt'
 
 type Row = { label: string; keys: string[] }
 
-function shortcutRows(): Row[] {
-  return [
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.fit', 'Fit all to view'),
-      keys: [MOD, '0']
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.autoGrid', 'Auto grid layout'),
-      keys: [SHIFT, MOD, 'L']
-    },
-    {
-      label: translate(
-        'auto.components.canvas.CanvasShortcutsPane.autoVertical',
-        'Group by worktree'
-      ),
-      keys: [ALT, SHIFT, MOD, 'L']
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.tidy', 'Tidy selection'),
-      keys: [SHIFT, MOD, 'G']
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.stack', 'Stack selection'),
-      keys: [SHIFT, MOD, 'S']
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.close', 'Close / return window'),
-      keys: [MOD, 'W']
-    },
+// Registry-backed chords (rebindable in Settings) paired with their cheat-sheet label.
+const CHORD_ROWS: { id: KeybindingActionId; label: () => string }[] = [
+  {
+    id: 'canvas.fitToView',
+    label: () => translate('auto.components.canvas.CanvasShortcutsPane.fit', 'Fit all to view')
+  },
+  {
+    id: 'canvas.autoLayout',
+    label: () =>
+      translate('auto.components.canvas.CanvasShortcutsPane.autoGrid', 'Auto grid layout')
+  },
+  {
+    id: 'canvas.groupByWorktree',
+    label: () =>
+      translate('auto.components.canvas.CanvasShortcutsPane.autoVertical', 'Group by worktree')
+  },
+  {
+    id: 'canvas.tidySelection',
+    label: () => translate('auto.components.canvas.CanvasShortcutsPane.tidy', 'Tidy selection')
+  },
+  {
+    id: 'canvas.stackSelection',
+    label: () => translate('auto.components.canvas.CanvasShortcutsPane.stack', 'Stack selection')
+  },
+  {
+    id: 'canvas.closeNode',
+    label: () =>
+      translate('auto.components.canvas.CanvasShortcutsPane.close', 'Close / return window')
+  }
+]
+
+function useShortcutRows(): Row[] {
+  const keybindings = useAppStore((s) => s.keybindings)
+  const platform = getShortcutPlatform()
+
+  const chordRows: Row[] = CHORD_ROWS.map(({ id, label }) => {
+    const [binding] = getEffectiveKeybindingsForAction(id, platform, keybindings)
+    return { label: label(), keys: binding ? formatKeybinding(binding, platform) : [] }
+  }).filter((row) => row.keys.length > 0)
+
+  const gestureRows: Row[] = [
     {
       label: translate('auto.components.canvas.CanvasShortcutsPane.zoom', 'Zoom'),
       keys: [MOD, translate('auto.components.canvas.CanvasShortcutsPane.scroll', 'Scroll')]
@@ -66,6 +83,8 @@ function shortcutRows(): Row[] {
       keys: [translate('auto.components.canvas.CanvasShortcutsPane.rightClick', 'Right-click')]
     }
   ]
+
+  return [...chordRows, ...gestureRows]
 }
 
 const KeyChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -76,6 +95,7 @@ const KeyChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 export default function CanvasShortcutsPane(): React.JSX.Element {
   const [open, setOpen] = useState(true)
+  const rows = useShortcutRows()
 
   if (!open) {
     return (
@@ -119,7 +139,7 @@ export default function CanvasShortcutsPane(): React.JSX.Element {
         </button>
       </div>
       <div className="flex flex-col gap-1.5 px-2.5 py-2">
-        {shortcutRows().map((r) => (
+        {rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between gap-3">
             <span className="truncate text-[11px] text-muted-foreground">{r.label}</span>
             <span className="flex shrink-0 items-center gap-0.5">

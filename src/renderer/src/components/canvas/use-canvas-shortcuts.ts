@@ -1,78 +1,82 @@
-// Canvas keyboard chords (Cmd on Mac, Ctrl elsewhere), installed at document
-// capture phase so a focused terminal pane can't swallow them first
-// (docs/main-surface.md):
-//   Cmd/Ctrl+W → close/return the focused node   Cmd/Ctrl+0 → fit all to view
-//   Shift-chords → arrange (grid / vertical / tidy / stack).
+// Canvas keyboard chords, installed at document capture phase so a focused
+// terminal pane can't swallow them first (docs/main-surface.md). Bindings are
+// resolved from Orca's keybindings registry (scope 'canvas'), so they show up
+// in Settings → Keyboard Shortcuts and are user-rebindable. Defaults:
+//   Cmd/Ctrl+U → fit all       Cmd/Ctrl+G → auto grid layout
+//   ⌥⇧⌘L → group by worktree   ⇧⌘G → tidy selection   ⇧⌘S → stack selection
+//   Cmd/Ctrl+W → close/return the focused node
+// The view/arrange chords fire only when the canvas itself — not an inner
+// editor/terminal pane — is focused, so they never steal a pane's own chord.
 
 import { useEffect } from 'react'
 import type { StoreApi, UseBoundStore } from 'zustand'
 import type { CanvasStore } from '../../store/canvas/canvas-store'
 import { focusedNodeId } from '../../store/canvas/canvas-selection-model'
 import { closeOrReturnCanvasNode } from './canvas-node-disposal'
+import { useAppStore } from '../../store'
+import { keybindingMatchesAction, type KeybindingActionId } from '../../../../shared/keybindings'
+import { getShortcutPlatform } from '@/lib/shortcut-platform'
 
 export function useCanvasShortcuts(store: UseBoundStore<StoreApi<CanvasStore>>): void {
+  const keybindings = useAppStore((s) => s.keybindings)
   useEffect(() => {
-    const isMac = navigator.userAgent.includes('Mac')
+    const platform = getShortcutPlatform()
+    const matches = (actionId: KeybindingActionId, e: KeyboardEvent): boolean =>
+      keybindingMatchesAction(
+        actionId,
+        {
+          key: e.key,
+          code: e.code,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey
+        },
+        platform,
+        keybindings
+      )
+
     const onKeyDown = (e: KeyboardEvent): void => {
-      const chord = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
-      if (!chord) {
-        return
-      }
-      const key = e.key.toLowerCase()
-
-      // Arrange (Shift-based). Don't steal letter chords from a focused editor/
-      // terminal pane — those are the pane's own shortcuts; only arrange when
-      // focus is on the canvas itself.
-      if (e.shiftKey) {
-        const inPane = (document.activeElement as HTMLElement | null)?.closest?.(
-          '[data-canvas-node]'
-        )
-        if (inPane) {
-          return
-        }
-        const st = store.getState()
-        if (key === 'l') {
+      // Close/return acts on the focused node, so it's allowed even while a pane
+      // is focused (⌘W closes the window you're working in).
+      if (matches('canvas.closeNode', e)) {
+        const focused = focusedNodeId(store.getState())
+        if (focused) {
           e.preventDefault()
           e.stopPropagation()
-          if (e.altKey) {
-            st.autoVerticalLayout() // ⌥⇧⌘L
-          } else {
-            st.autoLayout() // ⇧⌘L
-          }
-        } else if (key === 'g' && !e.altKey) {
-          e.preventDefault()
-          e.stopPropagation()
-          st.tidyGridSelected() // ⇧⌘G
-        } else if (key === 's' && !e.altKey) {
-          e.preventDefault()
-          e.stopPropagation()
-          st.stackSelected('row') // ⇧⌘S
+          closeOrReturnCanvasNode(store, focused)
         }
         return
       }
 
-      if (e.altKey) {
+      // View/arrange chords must not fire while a pane (editor/terminal) is
+      // focused — those keys are the pane's own shortcuts there.
+      const inPane = Boolean(
+        (document.activeElement as HTMLElement | null)?.closest?.('[data-canvas-node]')
+      )
+      if (inPane) {
         return
       }
-      // Cmd/Ctrl+0 → fit all windows to view ("where is it" — recenter on nodes).
-      if (e.key === '0') {
+
+      const st = store.getState()
+      const run = (fn: () => void): void => {
         e.preventDefault()
         e.stopPropagation()
-        store.getState().zoomToFit()
-        return
+        fn()
       }
-      if (key !== 'w') {
-        return
+      if (matches('canvas.fitToView', e)) {
+        run(() => st.zoomToFit())
+      } else if (matches('canvas.autoLayout', e)) {
+        run(() => st.autoLayout())
+      } else if (matches('canvas.groupByWorktree', e)) {
+        run(() => st.autoVerticalLayout())
+      } else if (matches('canvas.tidySelection', e)) {
+        run(() => st.tidyGridSelected())
+      } else if (matches('canvas.stackSelection', e)) {
+        run(() => st.stackSelected('row'))
       }
-      const focused = focusedNodeId(store.getState())
-      if (!focused) {
-        return
-      }
-      e.preventDefault()
-      e.stopPropagation()
-      closeOrReturnCanvasNode(store, focused)
     }
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [store])
+  }, [store, keybindings])
 }

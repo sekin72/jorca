@@ -13142,7 +13142,8 @@
           "zoomOut": "Zoom out",
           "reset": "Reset zoom to 100%",
           "zoomIn": "Zoom in",
-          "fit": "Fit all windows to view"
+          "fit": "Fit all windows to view",
+          "arrange": "Auto-arrange windows in a grid"
         },
         "CanvasMinimap": {
           "show": "Show minimap",
@@ -13315,5 +13316,18 @@
         }
       }
     }
-  }
+  },
+  "zoomOut": "Zoom out",
+  "reset": "Reset zoom to 100%",
+  "zoomIn": "Zoom in",
+  "fit": "Fit all windows to view",
+  "arrange": "Auto-arrange windows in a grid",
+  "group": "Group windows by worktree",
+  "tidy": "Tidy selection into a grid",
+  "stack": "Stack selection in a row",
+  "selectAll": "Select all windows",
+  "clearSelection": "Clear selection",
+  "deleteSelection": "Remove selected windows from canvas",
+  "undo": "Undo",
+  "redo": "Redo"
 }

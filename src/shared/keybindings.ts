@@ -13,6 +13,7 @@ export type KeybindingScope =
   | 'fileExplorer'
   | 'composer'
   | 'settings'
+  | 'canvas'
 
 export type KeybindingContext = 'app' | 'terminal' | 'browser'
 
@@ -111,6 +112,12 @@ export type KeybindingActionId =
   | 'terminal.closePane'
   | 'terminal.splitRight'
   | 'terminal.splitDown'
+  | 'canvas.fitToView'
+  | 'canvas.autoLayout'
+  | 'canvas.groupByWorktree'
+  | 'canvas.tidySelection'
+  | 'canvas.stackSelection'
+  | 'canvas.closeNode'
 
 export type KeybindingOverrides = Partial<Record<KeybindingActionId, string[]>>
 
@@ -1024,6 +1031,58 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
       linux: ['Alt+Shift+D'],
       win32: ['Alt+Shift+D']
     }
+  },
+  // Canvas view/arrange chords. Scoped to 'canvas' so their defaults can reuse
+  // chords owned by other scopes (Tidy=Mod+Shift+G, Close=Mod+W) without being
+  // flagged as conflicts — the canvas listener is capture-phase + focus-guarded,
+  // so it wins over the global/tab owners while a canvas has focus.
+  {
+    id: 'canvas.fitToView',
+    title: 'Fit all windows to view',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'fit', 'zoom', 'frame', 'recenter'],
+    defaultBindings: platformBindings(['Mod+U'])
+  },
+  {
+    id: 'canvas.autoLayout',
+    title: 'Auto-arrange windows in a grid',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'arrange', 'layout', 'grid', 'tidy'],
+    defaultBindings: platformBindings(['Mod+G'])
+  },
+  {
+    id: 'canvas.groupByWorktree',
+    title: 'Group windows by worktree',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'group', 'worktree', 'columns', 'arrange'],
+    defaultBindings: platformBindings(['Mod+Alt+Shift+L'])
+  },
+  {
+    id: 'canvas.tidySelection',
+    title: 'Tidy selection into a grid',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'tidy', 'selection', 'grid', 'arrange'],
+    defaultBindings: platformBindings(['Mod+Shift+G'])
+  },
+  {
+    id: 'canvas.stackSelection',
+    title: 'Stack selection in a row',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'stack', 'selection', 'row', 'arrange'],
+    defaultBindings: platformBindings(['Mod+Shift+S'])
+  },
+  {
+    id: 'canvas.closeNode',
+    title: 'Close / return focused window',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'close', 'return', 'window', 'node'],
+    defaultBindings: platformBindings(['Mod+W'])
   },
   ...buildAgentTabKeybindingDefinitions()
 ]

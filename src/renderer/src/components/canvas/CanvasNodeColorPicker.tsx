@@ -1,6 +1,7 @@
 // Per-node "Color Bloom" picker (ported concept from Null Space): a header
 // popover of preset window tints + a Default (clear) action. The chosen color
-// drives the node's focus glow and minimap rectangle (see CanvasNode).
+// tints the node's header title + minimap rectangle (see CanvasNode) — it never
+// touches the selection highlight, which stays uniform across all nodes.
 
 import React from 'react'
 import { Palette } from 'lucide-react'

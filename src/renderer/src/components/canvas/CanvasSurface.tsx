@@ -242,6 +242,12 @@ export default function CanvasSurface({
     if ((e.target as HTMLElement).closest('[role="menu"], [data-canvas-menu-backdrop]')) {
       return
     }
+    // Floating overlay controls (toolbar, zoom bar, shortcuts pane, placement
+    // ghosts) own their own clicks — a press there must not start a pan, or the
+    // setPointerCapture below steals the control's click.
+    if ((e.target as HTMLElement).closest('button, a, [role="button"], [data-canvas-overlay]')) {
+      return
+    }
     if (e.button !== 0 && e.button !== 1) {
       return
     }

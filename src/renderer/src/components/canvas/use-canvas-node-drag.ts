@@ -11,6 +11,10 @@ import { snapNodeDrag } from './canvas-snap'
 import { magneticDock, applyDock, DOCK_DWELL_SPEED } from './canvas-magnetic-dock'
 import { useAppStore } from '../../store'
 
+// Screen-pixel travel before a header press becomes a drag. Below it the press
+// stays a click/double-click (so double-click-to-maximize and plain clicks work).
+const DRAG_THRESHOLD = 4
+
 export function useCanvasNodeDrag(
   store: UseBoundStore<StoreApi<CanvasStore>>,
   nodeId: string
@@ -21,6 +25,9 @@ export function useCanvasNodeDrag(
     origin: Point
     size: Size
     others: Rect[]
+    pointerId: number
+    dragging: boolean
+    captured: boolean
   } | null>(null)
   // Last pointer sample, for the dwell/velocity gate on magnetic docking.
   const lastMove = useRef<{ t: number; x: number; y: number } | null>(null)
@@ -53,17 +60,30 @@ export function useCanvasNodeDrag(
         clientY: e.clientY,
         origin: node.origin,
         size: node.size,
-        others
+        others,
+        pointerId: e.pointerId,
+        dragging: false,
+        captured: false
       }
       lastMove.current = null
 
       const el = e.currentTarget as HTMLElement
-      el.setPointerCapture(e.pointerId)
 
       const onMove = (ev: PointerEvent): void => {
         const s = start.current
         if (!s) {
           return
+        }
+        // Treat sub-threshold travel as a potential click / double-click: don't
+        // move the node or capture the pointer, so header dblclick-to-maximize
+        // and plain clicks fire cleanly and a still press never nudges the node.
+        if (!s.dragging) {
+          if (Math.hypot(ev.clientX - s.clientX, ev.clientY - s.clientY) < DRAG_THRESHOLD) {
+            return
+          }
+          s.dragging = true
+          el.setPointerCapture(s.pointerId)
+          s.captured = true
         }
         // Pointer speed (screen px/ms). Magnetic docking only engages once the
         // drag slows below the dwell threshold, so a fast fling passes a neighbor
@@ -102,9 +122,12 @@ export function useCanvasNodeDrag(
         store.getState().setSnapGuides(result.guides)
       }
       const onUp = (ev: PointerEvent): void => {
+        const s = start.current
         start.current = null
         store.getState().setSnapGuides([])
-        el.releasePointerCapture(ev.pointerId)
+        if (s?.captured) {
+          el.releasePointerCapture(ev.pointerId)
+        }
         el.removeEventListener('pointermove', onMove)
         el.removeEventListener('pointerup', onUp)
       }

@@ -135,13 +135,15 @@ function CanvasNode({
   // see which worktree a window came from at a glance (docs/main-surface.md T-B2/B3).
   const sourceTint = node.sourceWorktreeId ? worktreeTint(node.sourceWorktreeId) : null
   // User "Color Bloom" pick wins; else the Main source-worktree tint. Drives the
-  // header wash, focus glow, and minimap rectangle.
+  // header wash and minimap rectangle only — never the selection highlight.
   const accent = node.color ?? sourceTint
 
   // Null Space window treatment: every node floats on a soft drop shadow. The
-  // focused node emits an accent glow (the node's color, else the app ring);
-  // unfocused nodes stay quiet with only a faint top-edge highlight.
-  const ringColor = accent ?? 'var(--ring)'
+  // focused node's glow is ALWAYS the app ring — kept identical for every node
+  // and user so the selection highlight never shifts with a node's own color
+  // (the picked color tints the header title instead). Unfocused nodes stay
+  // quiet with only a faint top-edge highlight.
+  const ringColor = 'var(--ring)'
   const FLOAT_SHADOW = '0 10px 30px -12px rgb(0 0 0 / 0.55)'
   const TOP_HIGHLIGHT = 'inset 0 1px 0 0 rgb(255 255 255 / 0.06)'
   const FOCUS_GLOW = `0 0 0 1px ${ringColor}, 0 0 18px -3px color-mix(in srgb, ${ringColor} 55%, transparent)`
@@ -191,7 +193,10 @@ function CanvasNode({
             </span>
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+        <span
+          className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+          style={node.color ? { color: node.color } : undefined}
+        >
           {node.panelId}
         </span>
         <div className="flex shrink-0 items-center gap-0.5">
