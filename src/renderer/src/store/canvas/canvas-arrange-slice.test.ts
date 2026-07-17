@@ -70,6 +70,43 @@ describe('arrange slice', () => {
     expect(store.getState().nodes[c].origin).toEqual(beforeC)
   })
 
+  it('autoSize gives every node one uniform, container-filling size and resets zoom', () => {
+    const ids = [addAt(store, 'a'), addAt(store, 'b'), addAt(store, 'c'), addAt(store, 'd')]
+    store.getState().setZoom(2.5)
+    store.getState().autoSize()
+    const sizes = ids.map((id) => store.getState().nodes[id].size)
+    // Every node ends up the exact same size...
+    for (const s of sizes) {
+      expect(s).toEqual(sizes[0])
+    }
+    // ...that tiles the 1200x800 container in a 2x2 grid (8px pad/gap).
+    expect(sizes[0]).toEqual({ width: 588, height: 388 })
+    // Zoom is reset to 100% at the origin regardless of prior zoom.
+    expect(store.getState().zoomLevel).toBe(1)
+    expect(store.getState().viewportOffset).toEqual({ x: 0, y: 0 })
+  })
+
+  it('autoSize reflows into the grid in current reading order and is undoable', () => {
+    const [a, b, c, d] = [
+      addAt(store, 'a'),
+      addAt(store, 'b'),
+      addAt(store, 'c'),
+      addAt(store, 'd')
+    ]
+    // Scramble positions; reading order (y then x) is b, c, a, d.
+    store.getState().moveNode(a, { x: 0, y: 100 })
+    store.getState().moveNode(b, { x: 0, y: 0 })
+    store.getState().moveNode(c, { x: 100, y: 0 })
+    store.getState().moveNode(d, { x: 100, y: 100 })
+    const beforeB = { ...store.getState().nodes[b].origin }
+    store.getState().autoSize()
+    // First in reading order lands in the top-left cell, last in the bottom-right.
+    expect(store.getState().nodes[b].origin).toEqual({ x: 8, y: 8 })
+    expect(store.getState().nodes[d].origin).toEqual({ x: 604, y: 404 })
+    store.getState().undo()
+    expect(store.getState().nodes[b].origin).toEqual(beforeB)
+  })
+
   it('selection tidies are no-ops for fewer than 2 nodes', () => {
     const a = addAt(store, 'a')
     store.getState().selectNodes([a])

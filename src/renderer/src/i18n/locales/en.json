@@ -13136,7 +13136,8 @@
           "empty": "Send a window here from any worktree to watch it on Main.",
           "groupByWorktree": "Group by worktree",
           "autoGrid": "Auto grid",
-          "tidySelection": "Tidy selection into a grid"
+          "tidySelection": "Tidy selection into a grid",
+          "autoSize": "Auto-size windows to fill the canvas"
         },
         "CanvasZoomReadout": {
           "zoomOut": "Zoom out",
@@ -13168,7 +13169,8 @@
           "autoGrid": "Auto grid layout",
           "autoVertical": "Group by worktree",
           "tidy": "Tidy selection",
-          "stack": "Stack selection"
+          "stack": "Stack selection",
+          "autoSize": "Auto-size to fill"
         },
         "CanvasNodeColorPicker": {
           "label": "Window color",
@@ -13329,5 +13331,6 @@
   "clearSelection": "Clear selection",
   "deleteSelection": "Remove selected windows from canvas",
   "undo": "Undo",
-  "redo": "Redo"
+  "redo": "Redo",
+  "autoSize": "Auto-size windows to fill the canvas"
 }

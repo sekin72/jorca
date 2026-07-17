@@ -113,6 +113,7 @@ export type KeybindingActionId =
   | 'terminal.splitRight'
   | 'terminal.splitDown'
   | 'canvas.fitToView'
+  | 'canvas.autoSize'
   | 'canvas.autoLayout'
   | 'canvas.groupByWorktree'
   | 'canvas.tidySelection'
@@ -1043,6 +1044,14 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     scope: 'canvas',
     searchKeywords: ['shortcut', 'canvas', 'fit', 'zoom', 'frame', 'recenter'],
     defaultBindings: platformBindings(['Mod+U'])
+  },
+  {
+    id: 'canvas.autoSize',
+    title: 'Auto-size windows to fill the canvas',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'auto-size', 'fill', 'equal', 'uniform', 'tile'],
+    defaultBindings: platformBindings(['Mod+Shift+U'])
   },
   {
     id: 'canvas.autoLayout',

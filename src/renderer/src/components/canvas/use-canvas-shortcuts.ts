@@ -2,7 +2,8 @@
 // terminal pane can't swallow them first (docs/main-surface.md). Bindings are
 // resolved from Orca's keybindings registry (scope 'canvas'), so they show up
 // in Settings → Keyboard Shortcuts and are user-rebindable. Defaults:
-//   Cmd/Ctrl+U → fit all       Cmd/Ctrl+G → auto grid layout
+//   Cmd/Ctrl+U → fit all       ⇧⌘U → auto-size (fill canvas)
+//   Cmd/Ctrl+G → auto grid layout
 //   ⌥⇧⌘L → group by worktree   ⇧⌘G → tidy selection   ⇧⌘S → stack selection
 //   Cmd/Ctrl+W → close/return the focused node
 // The view/arrange chords fire only when the canvas itself — not an inner
@@ -66,6 +67,8 @@ export function useCanvasShortcuts(store: UseBoundStore<StoreApi<CanvasStore>>):
       }
       if (matches('canvas.fitToView', e)) {
         run(() => st.zoomToFit())
+      } else if (matches('canvas.autoSize', e)) {
+        run(() => st.autoSize())
       } else if (matches('canvas.autoLayout', e)) {
         run(() => st.autoLayout())
       } else if (matches('canvas.groupByWorktree', e)) {

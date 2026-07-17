@@ -8,7 +8,7 @@
 
 import React from 'react'
 import { useStore } from 'zustand'
-import { LayoutGrid, Columns3, Grid3x3 } from 'lucide-react'
+import { Maximize, LayoutGrid, Columns3, Grid3x3 } from 'lucide-react'
 import { getMainCanvasStore } from '../../store/canvas/canvas-store'
 import { MAIN_SURFACE_ID } from '../../../../shared/canvas-node'
 import { CanvasStoreProvider } from './canvas-store-context'
@@ -46,6 +46,15 @@ export default function MainCanvas(): React.JSX.Element {
         <CanvasSurface store={store} surfaceId={MAIN_SURFACE_ID} />
         {nodeCount > 0 && (
           <div className="absolute left-2 top-2 z-10 flex items-center gap-0.5 rounded-lg border bg-card p-1 shadow-xs">
+            <ArrangeButton
+              label={translate(
+                'auto.components.canvas.MainCanvas.autoSize',
+                'Auto-size windows to fill the canvas'
+              )}
+              onClick={() => store.getState().autoSize()}
+            >
+              <Maximize className="h-4 w-4" />
+            </ArrangeButton>
             <ArrangeButton
               label={translate(
                 'auto.components.canvas.MainCanvas.groupByWorktree',

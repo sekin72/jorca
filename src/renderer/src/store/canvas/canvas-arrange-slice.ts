@@ -4,11 +4,12 @@
 // Written fresh against Orca's store; sizes/gaps are our own choices.
 
 import type { CanvasNodeState } from '../../../../shared/canvas-node'
+import { MIN_NODE_SIZE } from '../../components/canvas/canvas-interaction-math'
 import type { CanvasGet, CanvasSet, CanvasStoreActions } from './canvas-store-types'
 
 type ArrangeActions = Pick<
   CanvasStoreActions,
-  'autoLayout' | 'autoVerticalLayout' | 'stackSelected' | 'tidyGridSelected'
+  'autoSize' | 'autoLayout' | 'autoVerticalLayout' | 'stackSelected' | 'tidyGridSelected'
 >
 
 const GRID_GAP = 8
@@ -24,6 +25,49 @@ function selectedNodes(state: {
 
 export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActions {
   return {
+    autoSize() {
+      const state = get()
+      const cs = state.containerSize
+      // Reading order (top-to-bottom, left-to-right) so "sorting" is preserved;
+      // creationIndex only breaks y/x ties, keeping the reflow deterministic.
+      const nodeList = Object.values(state.nodes).sort(
+        (a, b) =>
+          a.origin.y - b.origin.y || a.origin.x - b.origin.x || a.creationIndex - b.creationIndex
+      )
+      if (nodeList.length === 0 || cs.width === 0 || cs.height === 0) {
+        return
+      }
+      // Zoom is reset to 1 below, so canvas coords == view coords: sizing cells to
+      // the container tiles it exactly. Square-ish grid; last row may be partial.
+      const cols = Math.max(1, Math.ceil(Math.sqrt(nodeList.length)))
+      const rows = Math.ceil(nodeList.length / cols)
+      const cellW = Math.max(
+        MIN_NODE_SIZE.width,
+        Math.floor((cs.width - 2 * GRID_GAP - (cols - 1) * GRID_GAP) / cols)
+      )
+      const cellH = Math.max(
+        MIN_NODE_SIZE.height,
+        Math.floor((cs.height - 2 * GRID_GAP - (rows - 1) * GRID_GAP) / rows)
+      )
+
+      get().pushHistory()
+      const nodes = { ...state.nodes }
+      nodeList.forEach((node, i) => {
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        nodes[node.id] = {
+          ...nodes[node.id],
+          origin: {
+            x: GRID_GAP + col * (cellW + GRID_GAP),
+            y: GRID_GAP + row * (cellH + GRID_GAP)
+          },
+          size: { width: cellW, height: cellH }
+        }
+      })
+      // Absolute reset (not relative) so repeated clicks are idempotent.
+      set({ nodes, zoomLevel: 1, viewportOffset: { x: 0, y: 0 } })
+    },
+
     autoLayout() {
       const state = get()
       const nodeList = Object.values(state.nodes).sort((a, b) => a.creationIndex - b.creationIndex)

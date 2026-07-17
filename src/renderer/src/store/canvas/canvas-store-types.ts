@@ -110,6 +110,9 @@ export type CanvasStoreActions = {
   zoomToFit: () => void
 
   // Arrange (bulk layout)
+  /** Reset zoom to 100% and reflow ALL nodes into a grid whose equal-sized cells
+   *  tile the viewport, preserving current reading order. "Fill the canvas." */
+  autoSize: () => void
   /** Uniform grid of ALL nodes sized to the viewport, then zoom-to-fit. */
   autoLayout: () => void
   /** ALL nodes into one column per `sourceWorktreeId` (borrow order), uniform

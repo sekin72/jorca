@@ -9,6 +9,7 @@ import {
   Minus,
   Plus,
   Frame,
+  Maximize,
   LayoutGrid,
   Columns3,
   Grid2x2,
@@ -114,6 +115,14 @@ export default function CanvasZoomReadout({ store }: { store: BoundStore }): Rea
         onClick={() => act().zoomToFit()}
       >
         <Frame className={ICON} />
+      </BarButton>
+      <BarButton
+        label={t('autoSize', 'Auto-size windows to fill the canvas')}
+        title={`${t('autoSize', 'Auto-size windows to fill the canvas')} (⇧⌘/Ctrl+U)`}
+        disabled={!hasNodes}
+        onClick={() => act().autoSize()}
+      >
+        <Maximize className={ICON} />
       </BarButton>
       <BarButton
         label={t('arrange', 'Auto-arrange windows in a grid')}

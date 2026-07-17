@@ -26,6 +26,11 @@ const CHORD_ROWS: { id: KeybindingActionId; label: () => string }[] = [
     label: () => translate('auto.components.canvas.CanvasShortcutsPane.fit', 'Fit all to view')
   },
   {
+    id: 'canvas.autoSize',
+    label: () =>
+      translate('auto.components.canvas.CanvasShortcutsPane.autoSize', 'Auto-size to fill')
+  },
+  {
     id: 'canvas.autoLayout',
     label: () =>
       translate('auto.components.canvas.CanvasShortcutsPane.autoGrid', 'Auto grid layout')
