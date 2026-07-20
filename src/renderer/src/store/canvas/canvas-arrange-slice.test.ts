@@ -79,8 +79,8 @@ describe('arrange slice', () => {
     for (const s of sizes) {
       expect(s).toEqual(sizes[0])
     }
-    // ...that tiles the 1200x800 container in a 2x2 grid (8px pad/gap).
-    expect(sizes[0]).toEqual({ width: 588, height: 388 })
+    // ...that tiles the 1200x800 container in a 2x2 grid (80/60px pad).
+    expect(sizes[0]).toEqual({ width: 490, height: 290 })
     // Zoom is reset to 100% at the origin regardless of prior zoom.
     expect(store.getState().zoomLevel).toBe(1)
     expect(store.getState().viewportOffset).toEqual({ x: 0, y: 0 })
@@ -101,8 +101,8 @@ describe('arrange slice', () => {
     const beforeB = { ...store.getState().nodes[b].origin }
     store.getState().autoSize()
     // First in reading order lands in the top-left cell, last in the bottom-right.
-    expect(store.getState().nodes[b].origin).toEqual({ x: 8, y: 8 })
-    expect(store.getState().nodes[d].origin).toEqual({ x: 604, y: 404 })
+    expect(store.getState().nodes[b].origin).toEqual({ x: 80, y: 80 })
+    expect(store.getState().nodes[d].origin).toEqual({ x: 650, y: 450 })
     store.getState().undo()
     expect(store.getState().nodes[b].origin).toEqual(beforeB)
   })

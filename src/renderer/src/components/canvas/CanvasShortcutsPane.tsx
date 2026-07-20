@@ -8,86 +8,33 @@ import { Keyboard, X } from 'lucide-react'
 import {
   formatKeybinding,
   getEffectiveKeybindingsForAction,
-  type KeybindingActionId
+  KEYBINDING_DEFINITIONS
 } from '../../../../shared/keybindings'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { useAppStore } from '../../store'
 import { translate } from '@/i18n/i18n'
-
-const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
-const MOD = isMac ? '⌘' : 'Ctrl'
+import { useCanvasHudVisibilityStore } from './canvas-shortcut-hud-store'
+import { getCanvasGestureRows } from './canvas-shortcut-hud-visibility'
 
 type Row = { label: string; keys: string[] }
 
-// Registry-backed chords (rebindable in Settings) paired with their cheat-sheet label.
-const CHORD_ROWS: { id: KeybindingActionId; label: () => string }[] = [
-  {
-    id: 'canvas.fitToView',
-    label: () => translate('auto.components.canvas.CanvasShortcutsPane.fit', 'Fit all to view')
-  },
-  {
-    id: 'canvas.autoSize',
-    label: () =>
-      translate('auto.components.canvas.CanvasShortcutsPane.autoSize', 'Auto-size to fill')
-  },
-  {
-    id: 'canvas.autoLayout',
-    label: () =>
-      translate('auto.components.canvas.CanvasShortcutsPane.autoGrid', 'Auto grid layout')
-  },
-  {
-    id: 'canvas.groupByWorktree',
-    label: () =>
-      translate('auto.components.canvas.CanvasShortcutsPane.autoVertical', 'Group by worktree')
-  },
-  {
-    id: 'canvas.tidySelection',
-    label: () => translate('auto.components.canvas.CanvasShortcutsPane.tidy', 'Tidy selection')
-  },
-  {
-    id: 'canvas.stackSelection',
-    label: () => translate('auto.components.canvas.CanvasShortcutsPane.stack', 'Stack selection')
-  },
-  {
-    id: 'canvas.closeNode',
-    label: () =>
-      translate('auto.components.canvas.CanvasShortcutsPane.close', 'Close / return window')
-  }
-]
-
+// Rows are user-curated in Settings → Keyboard Shortcuts: any registry chord the
+// user checks appears here (unbound ones stay hidden), plus the chosen gestures.
 function useShortcutRows(): Row[] {
   const keybindings = useAppStore((s) => s.keybindings)
+  const shownIds = useCanvasHudVisibilityStore((s) => s.shownIds)
   const platform = getShortcutPlatform()
 
-  const chordRows: Row[] = CHORD_ROWS.map(({ id, label }) => {
-    const [binding] = getEffectiveKeybindingsForAction(id, platform, keybindings)
-    return { label: label(), keys: binding ? formatKeybinding(binding, platform) : [] }
-  }).filter((row) => row.keys.length > 0)
+  const chordRows: Row[] = KEYBINDING_DEFINITIONS.filter((def) => shownIds.has(def.id))
+    .map((def) => {
+      const [binding] = getEffectiveKeybindingsForAction(def.id, platform, keybindings)
+      return { label: def.title, keys: binding ? formatKeybinding(binding, platform) : [] }
+    })
+    .filter((row) => row.keys.length > 0)
 
-  const gestureRows: Row[] = [
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.zoom', 'Zoom'),
-      keys: [MOD, translate('auto.components.canvas.CanvasShortcutsPane.scroll', 'Scroll')]
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.pan', 'Pan'),
-      keys: [translate('auto.components.canvas.CanvasShortcutsPane.twoFinger', 'Two-finger drag')]
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.newFile', 'New file'),
-      keys: [translate('auto.components.canvas.CanvasShortcutsPane.dblClick', 'Double-click')]
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.maximize', 'Maximize window'),
-      keys: [
-        translate('auto.components.canvas.CanvasShortcutsPane.dblHeader', 'Double-click header')
-      ]
-    },
-    {
-      label: translate('auto.components.canvas.CanvasShortcutsPane.menu', 'Spawn menu'),
-      keys: [translate('auto.components.canvas.CanvasShortcutsPane.rightClick', 'Right-click')]
-    }
-  ]
+  const gestureRows: Row[] = getCanvasGestureRows()
+    .filter((gesture) => shownIds.has(gesture.id))
+    .map((gesture) => ({ label: gesture.label, keys: gesture.keys }))
 
   return [...chordRows, ...gestureRows]
 }

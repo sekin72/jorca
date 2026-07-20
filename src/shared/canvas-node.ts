@@ -29,6 +29,10 @@ export type Rect = {
  *  lines up on the same lattice. */
 export const CANVAS_GRID_SIZE = 20
 
+/** Height of the node chrome/title bar in canvas-space pixels. Used by
+ *  overlay positioning to offset terminal content below the header. */
+export const CANVAS_NODE_HEADER_HEIGHT = 24
+
 export type SnapGuideAxis = 'x' | 'y'
 
 /** A transient alignment rule drawn while dragging, positioned in canvas space. */

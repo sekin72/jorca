@@ -14,6 +14,12 @@ type ArrangeActions = Pick<
 
 const GRID_GAP = 8
 const COLUMN_GAP = 16
+// Asymmetric padding keeps nodes clear of the floating UI: the action bar
+// (top-left) and shortcuts pane (bottom-left) sit over the canvas surface.
+const PAD_TOP = 80
+const PAD_LEFT = 80
+const PAD_RIGHT = 60
+const PAD_BOTTOM = 60
 
 function selectedNodes(state: {
   nodes: Record<string, CanvasNodeState>
@@ -43,11 +49,11 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
       const rows = Math.ceil(nodeList.length / cols)
       const cellW = Math.max(
         MIN_NODE_SIZE.width,
-        Math.floor((cs.width - 2 * GRID_GAP - (cols - 1) * GRID_GAP) / cols)
+        Math.floor((cs.width - PAD_LEFT - PAD_RIGHT - (cols - 1) * PAD_LEFT) / cols)
       )
       const cellH = Math.max(
         MIN_NODE_SIZE.height,
-        Math.floor((cs.height - 2 * GRID_GAP - (rows - 1) * GRID_GAP) / rows)
+        Math.floor((cs.height - PAD_TOP - PAD_BOTTOM - (rows - 1) * PAD_TOP) / rows)
       )
 
       get().pushHistory()
@@ -58,8 +64,8 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
         nodes[node.id] = {
           ...nodes[node.id],
           origin: {
-            x: GRID_GAP + col * (cellW + GRID_GAP),
-            y: GRID_GAP + row * (cellH + GRID_GAP)
+            x: PAD_LEFT + col * (cellW + PAD_LEFT),
+            y: PAD_TOP + row * (cellH + PAD_TOP)
           },
           size: { width: cellW, height: cellH }
         }

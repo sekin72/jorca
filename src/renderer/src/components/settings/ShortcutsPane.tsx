@@ -34,6 +34,7 @@ import {
   type ShortcutRowsByGroup
 } from './ShortcutFilterRail'
 import { ShortcutRowsList } from './ShortcutRowsList'
+import { CanvasHudGestureSection } from './CanvasHudGestureSection'
 import { ShortcutTerminalPolicyControl } from './ShortcutTerminalPolicyControl'
 import { getTerminalShortcutPolicySearchEntry } from './shortcuts-search'
 import { matchesSettingsSearch } from './settings-search'
@@ -359,6 +360,7 @@ export function ShortcutsPane(): React.JSX.Element {
             // horizontal scroll when long edit-time content popped in.
             className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pr-1 scrollbar-sleek"
             groups={visibleShortcutGroups}
+            footer={<CanvasHudGestureSection />}
             platform={platform}
             errors={errors}
             disableMemory={disableMemory}

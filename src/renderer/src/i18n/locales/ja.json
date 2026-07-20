@@ -9142,6 +9142,12 @@
           "availability": "利用可能:",
           "testFlight": "TestFlight",
           "androidApk": "Android APK"
+        },
+        "CanvasHudGestureSection": {
+          "title": "Canvas gestures"
+        },
+        "CanvasHudToggle": {
+          "show": "Show on canvas"
         }
       },
       "right": {
