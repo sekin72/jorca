@@ -100,6 +100,33 @@ export default function CanvasMinimap({ store }: { store: BoundStore }): React.J
     (a, b) => JSON.stringify(a) === JSON.stringify(b)
   )
 
+  // Zoom controls stay visible whether the minimap is expanded or collapsed.
+  const zoomControls = (
+    <div className="flex items-center justify-center gap-0.5 px-2 py-1">
+      <IconButton
+        label="Zoom out"
+        onClick={() => zoomBy(1 / 1.2)}
+        className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Minus className="h-3 w-3" />
+      </IconButton>
+      <IconButton
+        label="Reset zoom to 100%"
+        onClick={resetZoom}
+        className="min-w-[36px] rounded px-1 text-center font-mono text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        {Math.round(zoom * 100)}%
+      </IconButton>
+      <IconButton
+        label="Zoom in"
+        onClick={() => zoomBy(1.2)}
+        className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Plus className="h-3 w-3" />
+      </IconButton>
+    </div>
+  )
+
   const panToEvent = (e: React.PointerEvent | PointerEvent): void => {
     const rect = mapRef.current?.getBoundingClientRect()
     if (!rect) {
@@ -133,7 +160,8 @@ export default function CanvasMinimap({ store }: { store: BoundStore }): React.J
 
   if (!open) {
     return (
-      <div className="absolute bottom-3 right-3 z-10 rounded-lg border bg-card p-1 shadow-xs">
+      <div className="absolute bottom-3 right-3 z-10 flex items-center gap-0.5 rounded-lg border bg-card p-1 shadow-xs">
+        {zoomControls}
         <IconButton
           label={translate('auto.components.canvas.CanvasMinimap.show', 'Show minimap')}
           onClick={() => setOpen(true)}
@@ -187,29 +215,7 @@ export default function CanvasMinimap({ store }: { store: BoundStore }): React.J
         </IconButton>
       </div>
 
-      <div className="flex items-center justify-center gap-0.5 border-t border-border px-2 py-1">
-        <IconButton
-          label="Zoom out"
-          onClick={() => zoomBy(1 / 1.2)}
-          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <Minus className="h-3 w-3" />
-        </IconButton>
-        <IconButton
-          label="Reset zoom to 100%"
-          onClick={resetZoom}
-          className="min-w-[36px] rounded px-1 text-center font-mono text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          {Math.round(zoom * 100)}%
-        </IconButton>
-        <IconButton
-          label="Zoom in"
-          onClick={() => zoomBy(1.2)}
-          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <Plus className="h-3 w-3" />
-        </IconButton>
-      </div>
+      <div className="border-t border-border">{zoomControls}</div>
     </div>
   )
 }
