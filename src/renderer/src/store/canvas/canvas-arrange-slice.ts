@@ -1,25 +1,40 @@
-// Arrange slice — bulk layout actions (docs/main-surface.md T-B1). Two whole-
-// canvas tidies (autoLayout grid, autoVerticalLayout column-per-worktree) and two
-// selection tidies (stack, grid). All push history first so a tidy is undoable.
-// Written fresh against Orca's store; sizes/gaps are our own choices.
+// Arrange slice — bulk layout actions (docs/main-surface.md T-B1).
+// autoSize: resizes all nodes to fill the viewport at zoom 100%.
+// Group / Tidy / Stack: set every node to default size, reposition, zoom-to-fit.
+// Every action shares the same padding (top/bottom/left/right) and node gap,
+// read from settings so all modes behave consistently.
+// All push history first so a tidy is undoable.
 
 import type { CanvasNodeState } from '../../../../shared/canvas-node'
 import { MIN_NODE_SIZE } from '../../components/canvas/canvas-interaction-math'
 import type { CanvasGet, CanvasSet, CanvasStoreActions } from './canvas-store-types'
+import { useAppStore } from '../../store'
 
 type ArrangeActions = Pick<
   CanvasStoreActions,
   'autoSize' | 'autoLayout' | 'autoVerticalLayout' | 'stackSelected' | 'tidyGridSelected'
 >
 
-const GRID_GAP = 8
-const COLUMN_GAP = 16
-// Asymmetric padding keeps nodes clear of the floating UI: the action bar
-// (top-left) and shortcuts pane (bottom-left) sit over the canvas surface.
-const PAD_TOP = 80
-const PAD_LEFT = 80
-const PAD_RIGHT = 60
-const PAD_BOTTOM = 60
+/** Shared layout geometry read from settings — one set of paddings + one node gap
+ *  used by every action so the modes behave consistently. */
+type LayoutGeometry = {
+  padTop: number
+  padBottom: number
+  padLeft: number
+  padRight: number
+  gap: number
+}
+
+function readLayoutGeometry(): LayoutGeometry {
+  const s = useAppStore.getState().settings
+  return {
+    padTop: s?.canvasPaddingTop ?? 40,
+    padBottom: s?.canvasPaddingBottom ?? 50,
+    padLeft: s?.canvasPaddingLeft ?? 50,
+    padRight: s?.canvasPaddingRight ?? 50,
+    gap: s?.canvasNodeGap ?? 10
+  }
+}
 
 function selectedNodes(state: {
   nodes: Record<string, CanvasNodeState>
@@ -29,13 +44,42 @@ function selectedNodes(state: {
   return Object.values(state.nodes).filter((n) => set.has(n.id))
 }
 
+/** Apply a zoom-to-fit that frames all nodes with the shared asymmetric padding,
+ *  centered within the padded area. Zoom is calculated dynamically to fit. */
+function applyZoomToFit(get: CanvasGet, set: CanvasSet): void {
+  const state = get()
+  const cs = state.containerSize
+  const nodes = Object.values(state.nodes)
+  if (nodes.length === 0 || cs.width === 0 || cs.height === 0) {
+    return
+  }
+  const { padTop, padBottom, padLeft, padRight } = readLayoutGeometry()
+  const minX = Math.min(...nodes.map((n) => n.origin.x))
+  const minY = Math.min(...nodes.map((n) => n.origin.y))
+  const maxX = Math.max(...nodes.map((n) => n.origin.x + n.size.width))
+  const maxY = Math.max(...nodes.map((n) => n.origin.y + n.size.height))
+  const contentW = maxX - minX
+  const contentH = maxY - minY
+  const availW = cs.width - padLeft - padRight
+  const availH = cs.height - padTop - padBottom
+  // Calculate zoom to fit; cap at 1.0 so nodes don't start smaller than natural size.
+  const fitZoom = Math.min(availW / contentW, availH / contentH, 1.0)
+  set({
+    zoomLevel: fitZoom,
+    viewportOffset: {
+      x: padLeft + (availW - contentW * fitZoom) / 2 - minX * fitZoom,
+      y: padTop + (availH - contentH * fitZoom) / 2 - minY * fitZoom
+    }
+  })
+}
+
 export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActions {
   return {
     autoSize() {
       const state = get()
       const cs = state.containerSize
-      // Reading order (top-to-bottom, left-to-right) so "sorting" is preserved;
-      // creationIndex only breaks y/x ties, keeping the reflow deterministic.
+      const { padTop, padBottom, padLeft, padRight, gap } = readLayoutGeometry()
+
       const nodeList = Object.values(state.nodes).sort(
         (a, b) =>
           a.origin.y - b.origin.y || a.origin.x - b.origin.x || a.creationIndex - b.creationIndex
@@ -43,17 +87,16 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
       if (nodeList.length === 0 || cs.width === 0 || cs.height === 0) {
         return
       }
-      // Zoom is reset to 1 below, so canvas coords == view coords: sizing cells to
-      // the container tiles it exactly. Square-ish grid; last row may be partial.
+
       const cols = Math.max(1, Math.ceil(Math.sqrt(nodeList.length)))
       const rows = Math.ceil(nodeList.length / cols)
       const cellW = Math.max(
         MIN_NODE_SIZE.width,
-        Math.floor((cs.width - PAD_LEFT - PAD_RIGHT - (cols - 1) * PAD_LEFT) / cols)
+        Math.floor((cs.width - padLeft - padRight - (cols - 1) * gap) / cols)
       )
       const cellH = Math.max(
         MIN_NODE_SIZE.height,
-        Math.floor((cs.height - PAD_TOP - PAD_BOTTOM - (rows - 1) * PAD_TOP) / rows)
+        Math.floor((cs.height - padTop - padBottom - (rows - 1) * gap) / rows)
       )
 
       get().pushHistory()
@@ -64,29 +107,28 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
         nodes[node.id] = {
           ...nodes[node.id],
           origin: {
-            x: PAD_LEFT + col * (cellW + PAD_LEFT),
-            y: PAD_TOP + row * (cellH + PAD_TOP)
+            x: padLeft + col * (cellW + gap),
+            y: padTop + row * (cellH + gap)
           },
           size: { width: cellW, height: cellH }
         }
       })
-      // Absolute reset (not relative) so repeated clicks are idempotent.
+      // Absolute reset so repeated clicks are idempotent.
       set({ nodes, zoomLevel: 1, viewportOffset: { x: 0, y: 0 } })
     },
 
     autoLayout() {
+      // Unused — removed from UI. Kept so the action type stays in
+      // CanvasStoreActions and any existing calls don't break.
       const state = get()
-      const nodeList = Object.values(state.nodes).sort((a, b) => a.creationIndex - b.creationIndex)
+      const { gap } = readLayoutGeometry()
+      const nodeList = Object.values(state.nodes)
       if (nodeList.length === 0) {
         return
       }
-      // Reposition only — never resize the windows or change the canvas zoom (that
-      // shrinks terminals and compounds a zoom-out each click). Cell spacing is the
-      // largest window's dims so mixed sizes never overlap. Square-ish grid.
-      const cellW = Math.max(...nodeList.map((n) => n.size.width)) + GRID_GAP
-      const cellH = Math.max(...nodeList.map((n) => n.size.height)) + GRID_GAP
+      const cellW = Math.max(...nodeList.map((n) => n.size.width)) + gap
+      const cellH = Math.max(...nodeList.map((n) => n.size.height)) + gap
       const cols = Math.max(1, Math.ceil(Math.sqrt(nodeList.length)))
-
       get().pushHistory()
       const nodes = { ...state.nodes }
       nodeList.forEach((node, i) => {
@@ -94,7 +136,10 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
         const row = Math.floor(i / cols)
         nodes[node.id] = {
           ...nodes[node.id],
-          origin: { x: GRID_GAP + col * cellW, y: GRID_GAP + row * cellH }
+          origin: {
+            x: gap + col * cellW,
+            y: gap + row * cellH
+          }
         }
       })
       set({ nodes })
@@ -102,13 +147,24 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
 
     autoVerticalLayout() {
       const state = get()
+      const settings = useAppStore.getState().settings
+      const defaultW = settings?.canvasDefaultNodeWidth ?? 720
+      const defaultH = settings?.canvasDefaultNodeHeight ?? 480
+      const { gap } = readLayoutGeometry()
+
       const nodeList = Object.values(state.nodes)
       if (nodeList.length === 0) {
         return
       }
-      // One column per source worktree; nodes without one share a trailing column
-      // under the empty key. Column order and within-column order are both by
-      // creationIndex (borrow order), so the result is deterministic.
+
+      // Set every node to the default size.
+      get().pushHistory()
+      const nodes = { ...state.nodes }
+      for (const node of nodeList) {
+        nodes[node.id] = { ...nodes[node.id], size: { width: defaultW, height: defaultH } }
+      }
+
+      // Group by worktree: one column per sourceWorktreeId.
       const columns = new Map<string, CanvasNodeState[]>()
       for (const node of nodeList) {
         const key = node.sourceWorktreeId ?? ''
@@ -122,78 +178,108 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
       const minCreation = (nodes: CanvasNodeState[]): number =>
         Math.min(...nodes.map((n) => n.creationIndex))
       const orderedColumns = [...columns.values()]
-        .map((nodes) => [...nodes].sort((a, b) => a.creationIndex - b.creationIndex))
+        .map((col) => [...col].sort((a, b) => a.creationIndex - b.creationIndex))
         .sort((a, b) => minCreation(a) - minCreation(b))
 
-      // Reposition only (no resize, no zoom). Column width = widest window; each
-      // window keeps its own height.
-      const columnStep = Math.max(...nodeList.map((n) => n.size.width)) + COLUMN_GAP
-
-      get().pushHistory()
-      const nodes = { ...state.nodes }
-      let cursorX = COLUMN_GAP
+      let cursorX = gap
       for (const column of orderedColumns) {
-        let cursorY = COLUMN_GAP
+        let cursorY = gap
         for (const node of column) {
-          nodes[node.id] = { ...nodes[node.id], origin: { x: cursorX, y: cursorY } }
-          cursorY += node.size.height + COLUMN_GAP
-        }
-        cursorX += columnStep
-      }
-      set({ nodes })
-    },
-
-    stackSelected(axis, gap = COLUMN_GAP) {
-      const selected = selectedNodes(get())
-      if (selected.length < 2) {
-        return
-      }
-      get().pushHistory()
-      set((state) => {
-        const row = axis === 'row'
-        const sorted = [...selected].sort((a, b) =>
-          row ? a.origin.x - b.origin.x : a.origin.y - b.origin.y
-        )
-        // Anchor at the selection's top-left so the stack stays where it is.
-        const startX = Math.min(...selected.map((n) => n.origin.x))
-        const startY = Math.min(...selected.map((n) => n.origin.y))
-        const nodes = { ...state.nodes }
-        let cursor = row ? startX : startY
-        for (const n of sorted) {
-          nodes[n.id] = { ...n, origin: { x: row ? cursor : startX, y: row ? startY : cursor } }
-          cursor += (row ? n.size.width : n.size.height) + gap
-        }
-        return { nodes }
-      })
-    },
-
-    tidyGridSelected(gap = COLUMN_GAP) {
-      const selected = selectedNodes(get())
-      if (selected.length < 2) {
-        return
-      }
-      get().pushHistory()
-      set((state) => {
-        const cols = Math.ceil(Math.sqrt(selected.length))
-        const cellW = Math.max(...selected.map((n) => n.size.width))
-        const cellH = Math.max(...selected.map((n) => n.size.height))
-        const startX = Math.min(...selected.map((n) => n.origin.x))
-        const startY = Math.min(...selected.map((n) => n.origin.y))
-        // Preserve reading order: row-major by current (y, x).
-        const sorted = [...selected].sort(
-          (a, b) => a.origin.y - b.origin.y || a.origin.x - b.origin.x
-        )
-        const nodes = { ...state.nodes }
-        sorted.forEach((n, i) => {
-          const col = i % cols
-          const row = Math.floor(i / cols)
-          nodes[n.id] = {
-            ...n,
-            origin: { x: startX + col * (cellW + gap), y: startY + row * (cellH + gap) }
+          nodes[node.id] = {
+            ...nodes[node.id],
+            origin: { x: cursorX, y: cursorY }
           }
-        })
-        return { nodes }
+          cursorY += defaultH + gap
+        }
+        cursorX += defaultW + gap
+      }
+
+      set({ nodes })
+      applyZoomToFit(get, set)
+    },
+
+    stackSelected(axis) {
+      const settings = useAppStore.getState().settings
+      const defaultW = settings?.canvasDefaultNodeWidth ?? 720
+      const defaultH = settings?.canvasDefaultNodeHeight ?? 480
+      const { gap } = readLayoutGeometry()
+
+      const selected = selectedNodes(get())
+      if (selected.length < 2) {
+        return
+      }
+      get().pushHistory()
+
+      // Set every node to the default size first.
+      const state = get()
+      const nodes = { ...state.nodes }
+      for (const node of Object.values(state.nodes)) {
+        nodes[node.id] = { ...nodes[node.id], size: { width: defaultW, height: defaultH } }
+      }
+
+      // Stack selected nodes edge-to-edge along the chosen axis, anchored at top-left.
+      const row = axis === 'row'
+      const sorted = [...selected].sort((a, b) =>
+        row ? a.origin.x - b.origin.x : a.origin.y - b.origin.y
+      )
+      const startX = Math.min(...selected.map((n) => n.origin.x))
+      const startY = Math.min(...selected.map((n) => n.origin.y))
+      let cursor = row ? startX : startY
+      for (const node of sorted) {
+        nodes[node.id] = {
+          ...nodes[node.id],
+          origin: {
+            x: row ? cursor : startX,
+            y: row ? startY : cursor
+          }
+        }
+        cursor += (row ? defaultW : defaultH) + gap
+      }
+
+      set({ nodes })
+      applyZoomToFit(get, set)
+    },
+
+    tidyGridSelected() {
+      const settings = useAppStore.getState().settings
+      const defaultW = settings?.canvasDefaultNodeWidth ?? 720
+      const defaultH = settings?.canvasDefaultNodeHeight ?? 480
+      const { gap } = readLayoutGeometry()
+
+      const selected = selectedNodes(get())
+      if (selected.length < 2) {
+        return
+      }
+      get().pushHistory()
+
+      // Set every node to the default size first.
+      const state = get()
+      const nodes = { ...state.nodes }
+      for (const node of Object.values(state.nodes)) {
+        nodes[node.id] = { ...nodes[node.id], size: { width: defaultW, height: defaultH } }
+      }
+
+      // Grid the selected nodes at their top-left, preserving reading order.
+      const cols = Math.max(1, Math.ceil(Math.sqrt(selected.length)))
+      const startX = Math.min(...selected.map((n) => n.origin.x))
+      const startY = Math.min(...selected.map((n) => n.origin.y))
+      const sorted = [...selected].sort(
+        (a, b) => a.origin.y - b.origin.y || a.origin.x - b.origin.x
+      )
+      sorted.forEach((node, i) => {
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        nodes[node.id] = {
+          ...nodes[node.id],
+          origin: {
+            x: startX + col * (defaultW + gap),
+            y: startY + row * (defaultH + gap)
+          }
+        }
       })
+
+      set({ nodes })
+      applyZoomToFit(get, set)
     }
   }
 }

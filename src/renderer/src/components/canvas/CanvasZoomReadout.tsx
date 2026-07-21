@@ -53,23 +53,18 @@ export default function CanvasZoomReadout({ store }: { store: BoundStore }): Rea
 
   const hasNodes = nodeCount > 0
 
-  // Tidy/stack act on the current selection. If nothing is selected, select all first.
+  // Tidy/stack always act on ALL nodes — select all first so the action isn't a
+  // no-op when the user has a node focused.
   const tidy = (): void => {
-    if (store.getState().selection.length === 0) {
-      act().selectAll()
-    }
+    act().selectAll()
     act().tidyGridSelected()
   }
   const stackRow = (): void => {
-    if (store.getState().selection.length === 0) {
-      act().selectAll()
-    }
+    act().selectAll()
     act().stackSelected('row')
   }
   const stackColumn = (): void => {
-    if (store.getState().selection.length === 0) {
-      act().selectAll()
-    }
+    act().selectAll()
     act().stackSelected('column')
   }
 

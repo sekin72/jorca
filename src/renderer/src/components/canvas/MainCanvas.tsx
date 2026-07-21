@@ -8,39 +8,11 @@
 
 import React from 'react'
 import { useStore } from 'zustand'
-import { Maximize, LayoutGrid, Columns3, Grid3x3 } from 'lucide-react'
 import { getMainCanvasStore } from '../../store/canvas/canvas-store'
 import { MAIN_SURFACE_ID } from '../../../../shared/canvas-node'
 import { CanvasStoreProvider } from './canvas-store-context'
-import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip'
 import CanvasSurface from './CanvasSurface'
 import { translate } from '@/i18n/i18n'
-
-function ArrangeButton({
-  label,
-  onClick,
-  children
-}: {
-  label: string
-  onClick: () => void
-  children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          onClick={onClick}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          {children}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent sideOffset={4}>{label}</TooltipContent>
-    </Tooltip>
-  )
-}
 
 export default function MainCanvas(): React.JSX.Element {
   const store = getMainCanvasStore()
@@ -49,43 +21,6 @@ export default function MainCanvas(): React.JSX.Element {
     <CanvasStoreProvider store={store}>
       <div className="relative h-full w-full">
         <CanvasSurface store={store} surfaceId={MAIN_SURFACE_ID} />
-        {nodeCount > 0 && (
-          <div className="absolute left-2 top-2 z-10 flex items-center gap-0.5 rounded-lg border bg-card p-1 shadow-xs">
-            <ArrangeButton
-              label={translate(
-                'auto.components.canvas.MainCanvas.autoSize',
-                'Auto-size windows to fill the canvas'
-              )}
-              onClick={() => store.getState().autoSize()}
-            >
-              <Maximize className="h-4 w-4" />
-            </ArrangeButton>
-            <ArrangeButton
-              label={translate(
-                'auto.components.canvas.MainCanvas.groupByWorktree',
-                'Group by worktree'
-              )}
-              onClick={() => store.getState().autoVerticalLayout()}
-            >
-              <Columns3 className="h-4 w-4" />
-            </ArrangeButton>
-            <ArrangeButton
-              label={translate('auto.components.canvas.MainCanvas.autoGrid', 'Auto grid')}
-              onClick={() => store.getState().autoLayout()}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </ArrangeButton>
-            <ArrangeButton
-              label={translate(
-                'auto.components.canvas.MainCanvas.tidySelection',
-                'Tidy selection into a grid'
-              )}
-              onClick={() => store.getState().tidyGridSelected()}
-            >
-              <Grid3x3 className="h-4 w-4" />
-            </ArrangeButton>
-          </div>
-        )}
         {nodeCount === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="max-w-sm text-center text-sm text-muted-foreground">
