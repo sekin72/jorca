@@ -93,6 +93,7 @@ export type KeybindingActionId =
   | 'editor.copyContext'
   | 'editor.previousChange'
   | 'editor.nextChange'
+  | 'editor.addReviewNote'
   | 'fileExplorer.undo'
   | 'fileExplorer.redo'
   | 'fileExplorer.copyPath'
@@ -112,6 +113,8 @@ export type KeybindingActionId =
   | 'terminal.closePane'
   | 'terminal.splitRight'
   | 'terminal.splitDown'
+  | 'terminal.switchInputSource'
+
   | 'canvas.fitToView'
   | 'canvas.autoSize'
   | 'canvas.autoLayout'
@@ -154,6 +157,7 @@ export type KeybindingDefinition = {
   defaultBindings: PlatformBindings
   allowInTerminal?: boolean
   allowBareKeybindings?: boolean
+  allowShiftOnlyKeybindings?: boolean
   conflictGroup?: string
 }
 
@@ -187,6 +191,7 @@ type ParsedKeybinding = {
 
 type NormalizeKeybindingOptions = {
   allowBareKeybindings?: boolean
+  allowShiftOnlyKeybindings?: boolean
 }
 
 export type KeybindingValidationResult = { ok: true; value: string } | { ok: false; error: string }
@@ -434,7 +439,9 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Global',
     scope: 'global',
     searchKeywords: ['shortcut', 'sidebar', 'worktree', 'focus'],
-    defaultBindings: platformBindings(['Mod+0'])
+    // Why: keep zoom.reset on the browser-standard Mod+0; this chord was
+    // unreachable while it shared that default (#8584).
+    defaultBindings: platformBindings(['Mod+Shift+0'])
   },
   {
     id: 'floatingTerminal.toggle',
@@ -575,8 +582,10 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tabs',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'simulator', 'emulator', 'mobile', 'ios', 'new'],
+    // Why: keep explorer on Mod+Shift+E (VS Code muscle memory). Emulator is
+    // macOS-only and less common, so it yields to a free chord (#8533).
     defaultBindings: {
-      darwin: ['Mod+Shift+E'],
+      darwin: ['Mod+Alt+Shift+E'],
       linux: [],
       win32: []
     }
@@ -643,7 +652,10 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'next', 'switch', 'cycle'],
-    defaultBindings: platformBindings(['Mod+Shift+BracketRight'])
+    // Why: Mod+Shift+Bracket is the widespread "switch tab" chord, so it now
+    // drives the broad all-types cycle for new users; same-type moves to
+    // Mod+Alt. Pre-release installs keep the old mapping via the seed migration.
+    defaultBindings: platformBindings(['Mod+Alt+BracketRight'])
   },
   {
     id: 'tab.previousSameType',
@@ -651,7 +663,7 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'previous', 'switch', 'cycle'],
-    defaultBindings: platformBindings(['Mod+Shift+BracketLeft'])
+    defaultBindings: platformBindings(['Mod+Alt+BracketLeft'])
   },
   {
     id: 'tab.nextAllTypes',
@@ -659,7 +671,7 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'next', 'switch', 'cycle', 'all', 'any'],
-    defaultBindings: platformBindings(['Mod+Alt+BracketRight'])
+    defaultBindings: platformBindings(['Mod+Shift+BracketRight'])
   },
   {
     id: 'tab.previousAllTypes',
@@ -667,7 +679,7 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'previous', 'switch', 'cycle', 'all', 'any'],
-    defaultBindings: platformBindings(['Mod+Alt+BracketLeft'])
+    defaultBindings: platformBindings(['Mod+Shift+BracketLeft'])
   },
   {
     id: 'tab.previousRecent',
@@ -855,6 +867,16 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     searchKeywords: ['shortcut', 'editor', 'diff', 'change', 'hunk', 'next'],
     defaultBindings: platformBindings(['F7']),
     allowBareKeybindings: true
+  },
+  {
+    id: 'editor.addReviewNote',
+    title: 'Add Review Note',
+    group: 'Editors',
+    scope: 'editor',
+    searchKeywords: ['shortcut', 'editor', 'markdown', 'note', 'comment', 'annotation', 'review'],
+    // Why: Ctrl+Alt+letter is AltGr text input on Windows/Linux; an editor-scope
+    // default must not reserve characters such as Polish `ń`.
+    defaultBindings: platformBindings(['Mod+Shift+A'])
   },
   {
     id: 'fileExplorer.undo',
@@ -1093,8 +1115,47 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     searchKeywords: ['shortcut', 'canvas', 'close', 'return', 'window', 'node'],
     defaultBindings: platformBindings(['Mod+W'])
   },
+  {
+    id: 'terminal.switchInputSource',
+    title: 'Switch input source / language (native)',
+    group: 'Terminal Panes',
+    scope: 'terminal',
+    searchKeywords: [
+      'shortcut',
+      'input',
+      'source',
+      'language',
+      'korean',
+      'english',
+      'ime',
+      'switch',
+      'hangul',
+      'layout'
+    ],
+    defaultBindings: {
+      darwin: [],
+      linux: [],
+      win32: []
+    },
+    // Why: macOS permits Shift+Space as an input-source shortcut, while normal
+    // Orca actions reject Shift-only bindings to avoid stealing typed text.
+    allowShiftOnlyKeybindings: true
+
+  },
   ...buildAgentTabKeybindingDefinitions()
 ]
+
+/**
+ * The tab-switch bindings as they shipped before the convention swap. A one-time
+ * migration pins these for pre-release installs so upgrading users keep the
+ * shortcuts they learned; fresh installs get the new registry defaults above.
+ */
+export const LEGACY_TAB_SWITCH_BINDINGS: Readonly<Partial<Record<KeybindingActionId, string[]>>> = {
+  'tab.nextSameType': ['Mod+Shift+BracketRight'],
+  'tab.previousSameType': ['Mod+Shift+BracketLeft'],
+  'tab.nextAllTypes': ['Mod+Alt+BracketRight'],
+  'tab.previousAllTypes': ['Mod+Alt+BracketLeft']
+}
 
 export function agentTabActionId(agent: TuiAgent): AgentTabActionId {
   return `tab.newAgent.${agent}`
@@ -1444,13 +1505,21 @@ function normalizeKeybindingWithOptions(
   }
   const isShiftInsert = parsed.shift && parsed.key === 'Insert'
   const isBareAllowed = options.allowBareKeybindings === true && isSafeBareKey(parsed)
+  const isShiftOnlyAllowed =
+    options.allowShiftOnlyKeybindings === true &&
+    parsed.shift &&
+    !parsed.mod &&
+    !parsed.meta &&
+    !parsed.control &&
+    !parsed.alt
   if (
     !parsed.mod &&
     !parsed.meta &&
     !parsed.control &&
     !parsed.alt &&
     !isShiftInsert &&
-    !isBareAllowed
+    !isBareAllowed &&
+    !isShiftOnlyAllowed
   ) {
     return { ok: false, error: 'Include at least one modifier key.' }
   }
@@ -1510,8 +1579,10 @@ function normalizeKeybindingArrayWithOptions(
 }
 
 function normalizeOptionsForAction(actionId: KeybindingActionId): NormalizeKeybindingOptions {
+  const definition = DEFINITIONS_BY_ID.get(actionId)
   return {
-    allowBareKeybindings: DEFINITIONS_BY_ID.get(actionId)?.allowBareKeybindings === true
+    allowBareKeybindings: definition?.allowBareKeybindings === true,
+    allowShiftOnlyKeybindings: definition?.allowShiftOnlyKeybindings === true
   }
 }
 
@@ -1820,7 +1891,8 @@ export function keybindingFromInputForAction(
 function getDefaultBindings(definition: KeybindingDefinition, platform: NodeJS.Platform): string[] {
   return definition.defaultBindings[getKeybindingPlatform(platform)].map((binding) => {
     const normalized = normalizeKeybindingWithOptions(binding, {
-      allowBareKeybindings: definition.allowBareKeybindings === true
+      allowBareKeybindings: definition.allowBareKeybindings === true,
+      allowShiftOnlyKeybindings: definition.allowShiftOnlyKeybindings === true
     })
     return normalized.ok ? normalized.value : binding
   })

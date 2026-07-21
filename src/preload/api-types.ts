@@ -22,6 +22,10 @@ import type {
 import type { ReadClipboardTextOptions } from '../shared/clipboard-text'
 import type { AppIdentity } from '../shared/app-identity'
 import type { CanvasLayoutSnapshot, PersistedWorktreeCanvas } from '../shared/canvas-node'
+import type {
+  WriteTerminalRenderDesyncEvidenceArgs,
+  WriteTerminalRenderDesyncEvidenceResult
+} from '../shared/terminal-render-desync-evidence'
 import type { MobileRelayStatus } from '../shared/mobile-relay-status'
 import type { MobilePairingConnectionMode } from '../shared/mobile-pairing-connection-mode'
 import type {
@@ -68,6 +72,8 @@ import type {
   BaseRefDefaultResult,
   BaseRefSearchResult,
   BrowserCookieImportResult,
+  BrowserCertificateFailure,
+  BrowserCertificateProceedResult,
   BrowserLoadError,
   BrowserSessionProfile,
   BrowserSessionProfileScope,
@@ -299,10 +305,12 @@ import type { CliInstallStatus } from '../shared/cli-install-types'
 import type { E2EConfig } from '../shared/e2e-config'
 import type { AgentHookInstallStatus } from '../shared/agent-hook-types'
 import type {
+  AgentStatusClearIpcPayload,
   AgentStatusIpcPayload,
   MigrationUnsupportedPtyEntry
 } from '../shared/agent-status-types'
 import type { AgentInterruptInferenceRequest } from '../shared/agent-interrupt-intent'
+import type { AgentQuestionAnsweredInferenceRequest } from '../shared/agent-question-answered-intent'
 import type { TerminalSideEffectBatch } from '../shared/terminal-side-effect-facts'
 import type {
   RuntimeBrowserDriverState,
@@ -322,6 +330,7 @@ import type { ResolvedSourceControlAiGenerationParams } from '../shared/source-c
 import type { SourceControlAiSettings } from '../shared/source-control-ai-types'
 import type { ShellOpenLocalPathResult } from '../shared/shell-open-types'
 import type { SkillDiscoveryResult, SkillDiscoveryTarget } from '../shared/skills'
+import type { SkillFreshnessInventory } from '../shared/skill-freshness'
 import type {
   CrashReportBreadcrumbData,
   CrashReportCopyDiagnosticsArgs,
@@ -425,7 +434,11 @@ import type {
   AiVaultSubagentListArgs,
   AiVaultSubagentListResult
 } from '../shared/ai-vault-types'
-import type { AgentType, NativeChatMessage } from '../shared/native-chat-types'
+import type {
+  AgentType,
+  NativeChatMessage,
+  NativeChatTurnLifecycle
+} from '../shared/native-chat-types'
 import type { TelemetryConsentState } from '../shared/telemetry-consent-types'
 import type { AgentKind, LaunchSource, RequestKind } from '../shared/telemetry-events'
 import type { AppStarSource } from '../shared/gh-star-source'
@@ -479,7 +492,7 @@ export type BrowserApi = {
     worktreeId: string
     sessionProfileId?: string | null
     webContentsId: number
-  }) => Promise<void>
+  }) => Promise<boolean>
   unregisterGuest: (args: { browserPageId: string }) => Promise<void>
   openDevTools: (args: { browserPageId: string }) => Promise<boolean>
   setViewportOverride: (args: {
@@ -490,6 +503,13 @@ export type BrowserApi = {
   onGuestLoadFailed: (
     callback: (args: { browserPageId: string; loadError: BrowserLoadError }) => void
   ) => () => void
+  onCertificateFailureChanged: (
+    callback: (event: { browserPageId: string; failure: BrowserCertificateFailure | null }) => void
+  ) => () => void
+  proceedCertificate: (args: {
+    browserPageId: string
+    challengeId: string
+  }) => Promise<BrowserCertificateProceedResult>
   onPermissionDenied: (callback: (event: BrowserPermissionDeniedEvent) => void) => () => void
   onPopup: (callback: (event: BrowserPopupEvent) => void) => () => void
   onDownloadRequested: (callback: (event: BrowserDownloadRequestedEvent) => void) => () => void
@@ -827,16 +847,39 @@ export type AiVaultApi = {
 // notFound marks a miss caused by the transcript not existing on disk yet
 // (retry-worthy), as opposed to a real read/parse error (#8401).
 export type NativeChatReadSessionResult =
-  | { messages: NativeChatMessage[] }
+  | {
+      messages: NativeChatMessage[]
+      lifecycle?: NativeChatTurnLifecycle
+    }
   | { error: string; notFound?: true }
 
 /** Messages appended to a live-tailed transcript since the previous emit. */
 export type NativeChatAppendedMessages = NativeChatMessage[]
 
+export type NativeChatSubscriptionFrame =
+  | {
+      type: 'snapshot'
+      messages: NativeChatMessage[]
+      hasMore: boolean
+      error?: string
+      lifecycle?: NativeChatTurnLifecycle
+    }
+  | {
+      type: 'replacement'
+      messages: NativeChatMessage[]
+      hasMore: boolean
+      lifecycle?: NativeChatTurnLifecycle
+    }
+  | {
+      type: 'appended'
+      messages: NativeChatMessage[]
+      lifecycle?: NativeChatTurnLifecycle
+    }
+
 /** Wire payload for the `nativeChat:appended` push channel. */
 export type NativeChatAppendedPayload = {
   subscriptionId: string
-  messages: NativeChatAppendedMessages
+  frame: NativeChatSubscriptionFrame
 }
 
 export type NativeChatSubscribeArgs = {
@@ -847,6 +890,8 @@ export type NativeChatSubscribeArgs = {
   sessionId: string
   /** Authoritative transcript path from the agent hook (providerSession). */
   transcriptPath?: string
+  /** First snapshot size; later readSession calls grow this for pagination. */
+  limit?: number
 }
 
 export type NativeChatApi = {
@@ -860,11 +905,11 @@ export type NativeChatApi = {
     limit?: number,
     transcriptPath?: string
   ) => Promise<NativeChatReadSessionResult>
-  /** Live-tail a transcript: `onAppended` fires with only newly-appended
-   *  messages. Returns an unsubscribe fn that closes the main-process watcher. */
+  /** Live-tail a transcript. The first frame is a bounded race-safe snapshot;
+   *  later frames contain only newly appended messages. */
   subscribe: (
     args: NativeChatSubscribeArgs,
-    onAppended: (messages: NativeChatAppendedMessages) => void
+    onFrame: (frame: NativeChatSubscriptionFrame) => void
   ) => () => void
 }
 
@@ -884,6 +929,12 @@ export type AppApi = {
   /** Reloads the current app renderer through main so expected renderer
    *  teardown can be classified before Electron emits process-gone events. */
   reload: () => Promise<void>
+  /** Commits the renderer's final locally durable state before unload and
+   *  throws when the blocking durable write fails. */
+  persistBeforeUnloadSync: (args: {
+    sessions: { state: WorkspaceSessionState; hostId?: ExecutionHostId }[]
+    ui: Partial<PersistedUIState>
+  }) => void
   /** Resolves when the daemon PTY provider and hook receiver have either
    *  started or failed open for the first BrowserWindow. */
   awaitFirstWindowStartupServices: () => Promise<void>
@@ -923,6 +974,10 @@ export type AppApi = {
   /** Opens a native directory picker and authorizes the selected directory
    *  for Floating Workspace markdown file creation. */
   pickFloatingWorkspaceDirectory: () => Promise<string | null>
+  /** Persists flag-gated terminal render evidence under app-owned userData. */
+  writeTerminalRenderDesyncEvidence: (
+    args: WriteTerminalRenderDesyncEvidenceArgs
+  ) => Promise<WriteTerminalRenderDesyncEvidenceResult>
 }
 
 export type PreloadApi = {
@@ -1300,7 +1355,7 @@ export type PreloadApi = {
       isAlternateScreen?: boolean
       replay?: string
       sessionExpired?: boolean
-      coldRestore?: { scrollback: string; cwd: string }
+      coldRestore?: { scrollback: string; cwd: string; cols?: number; rows?: number }
       startupCwdFallback?: { kind: 'worktree'; cwd: string }
     }>
     write: (id: string, data: string) => void
@@ -1405,6 +1460,7 @@ export type PreloadApi = {
         data: string
         seq?: number
         rawLength?: number
+        transformed?: boolean
         background?: boolean
         droppedOutput?: boolean
       }) => void
@@ -1415,7 +1471,7 @@ export type PreloadApi = {
      *  the model snapshot. Never delivered in-band on pty:data. */
     onModelRestoreNeeded: (callback: (event: PtyModelRestoreNeededEvent) => void) => () => void
     /** Batched derived side-effect facts for PTYs whose bytes transit local
-     *  main; see docs/reference/terminal-side-effect-authority.md. */
+     *  main. */
     onSideEffect: (callback: (batch: TerminalSideEffectBatch) => void) => () => void
     /** Title-only replay snapshot for (re)attach; attention facts never replay. */
     getSideEffectSnapshot: (id: string) => Promise<TerminalSideEffectBatch | null>
@@ -2022,6 +2078,7 @@ export type PreloadApi = {
       siteUrl: string
       email: string
       apiToken: string
+      authType?: 'cloud' | 'server'
     }) => Promise<{ ok: true; viewer: JiraViewer } | { ok: false; error: string }>
     disconnect: (args?: { siteId?: string }) => Promise<void>
     selectSite: (args: { siteId: JiraSiteSelection }) => Promise<JiraConnectionStatus>
@@ -2262,6 +2319,7 @@ export type PreloadApi = {
   }
   skills: {
     discover: (target?: SkillDiscoveryTarget) => Promise<SkillDiscoveryResult>
+    freshnessInventory: () => Promise<SkillFreshnessInventory>
   }
   pet: {
     import: () => Promise<CustomPet | null>
@@ -2441,6 +2499,10 @@ export type PreloadApi = {
     onLocalLogTailChanged: (callback: (payload: LocalLogTailChangedPayload) => void) => () => void
     downloadFile: (args: {
       filePath: string
+      connectionId: string
+    }) => Promise<{ canceled: true } | { canceled: false; destinationPath: string }>
+    downloadFolder: (args: {
+      dirPath: string
       connectionId: string
     }) => Promise<{ canceled: true } | { canceled: false; destinationPath: string }>
     saveDownloadedFile: (args: {
@@ -2772,6 +2834,8 @@ export type PreloadApi = {
     recordFeatureInteraction: (id: FeatureInteractionId) => Promise<PersistedUIState>
     onStateChanged: (callback: (ui: PersistedUIState) => void) => () => void
     onOpenSettings: (callback: () => void) => () => void
+    /** Consumes a one-shot tray/menu-bar "open settings" intent queued before mount. */
+    consumePendingOpenSettings: () => Promise<boolean>
     onOpenSetupGuide: (callback: () => void) => () => void
     onOpenFeatureTour: (callback: () => void) => () => void
     onOpenCrashReport: (callback: () => void) => () => void
@@ -3170,11 +3234,14 @@ export type PreloadApi = {
   agentStatus: {
     /** Listen for agent status updates forwarded from native hook receivers. */
     onSet: (callback: (data: AgentStatusIpcPayload) => void) => () => void
-    /** Listen for main-process pane teardown that evicted a cached hook status. */
-    onClear: (callback: (data: { paneKey: string }) => void) => () => void
+    /** Listen for main-process cleanup that evicted cached hook status. */
+    onClear: (callback: (data: AgentStatusClearIpcPayload) => void) => () => void
     /** Return the current main-process hook cache after renderer hydration. */
     getSnapshot: () => Promise<AgentStatusIpcPayload[]>
     inferInterrupt: (request: AgentInterruptInferenceRequest) => Promise<boolean>
+    /** Guarded clear for an answered AskUserQuestion wait — the CLI emits no
+     *  hook at answer time, so the renderer reports the submit keystroke. */
+    inferQuestionAnswered: (request: AgentQuestionAnsweredInferenceRequest) => Promise<boolean>
     /** Listen for PTYs that still use a legacy numeric pane key but have
      *  registry-backed UUID pane proof. */
     onMigrationUnsupported: (callback: (entry: MigrationUnsupportedPtyEntry) => void) => () => void
@@ -3211,6 +3278,9 @@ export type PreloadApi = {
           pairingUrl: string
           endpoint: string
           deviceId: string
+          /** Mode the QR actually encodes; 'local-only' when an automatic
+           *  request degraded because Relay could not be attached. */
+          connectionMode: MobilePairingConnectionMode
         }
     >
     getWindowsFirewallStatus: (args?: { address?: string }) => Promise<

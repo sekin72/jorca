@@ -219,6 +219,7 @@ import { normalizeTerminalLineHeight } from '../shared/terminal-line-height-sett
 import { normalizeUiLanguage } from '../shared/ui-language'
 import { normalizeBrowserPageZoomLevel } from '../shared/browser-page-zoom'
 import { persistedUIValuesEqual } from '../shared/persisted-ui-equality'
+import { ActiveViewPreference } from './active-view-preference'
 import {
   normalizeFolderWorkspaceName,
   normalizeFolderWorkspaces
@@ -2629,6 +2630,7 @@ export type StoreOptions = {
 export class Store {
   private state: PersistedState
   private readonly dataFile: string
+  private readonly activeViewPreference: ActiveViewPreference
   private readonly terminalScrollbackSnapshotStorage: TerminalScrollbackSnapshotStorage
   private writeTimer: ReturnType<typeof setTimeout> | null = null
   private pendingWrite: Promise<void> | null = null
@@ -2639,7 +2641,7 @@ export class Store {
   private writesFrozen = false
   // Why: hash of the plaintext state as of the last successful write. Saves
   // triggered by mutations that net out to identical state skip the full
-  // 1.6MB pretty-print + tmp write + rename. Hashing plaintext (not the
+  // multi-MB serialize + tmp write + rename. Hashing plaintext (not the
   // written payload) because encrypt() uses a random IV per call, so the
   // on-disk bytes differ even for identical state.
   private lastWrittenStateHash: string | null = null
@@ -2669,6 +2671,9 @@ export class Store {
     const loaded = this.load()
     const normalized = normalizePersistedPaneIdentityState(loaded)
     this.state = normalized.state
+    // Why: activeView is a frequent, tiny preference; keeping it beside the
+    // profile avoids serializing the multi-MB recovery store on navigation.
+    this.activeViewPreference = new ActiveViewPreference(this.dataFile, this.state.ui?.activeView)
     const adaptedProjectGroups = this.adaptFlatFolderScanProjectGroups()
     for (const entry of normalized.migrationUnsupportedEntries) {
       setMigrationUnsupportedPty(entry)
@@ -3208,6 +3213,9 @@ export class Store {
             // Why: persisted settings can be user-edited or written by older
             // builds; keep tray-minimize false unless the stored value is true.
             minimizeToTrayOnClose: parsed.settings?.minimizeToTrayOnClose === true,
+            // Why: missing means default-on, and the value must round-trip
+            // unchanged on non-mac hosts; the darwin consumers gate the effect.
+            showMenuBarIcon: parsed.settings?.showMenuBarIcon !== false,
             uiLanguage: normalizeUiLanguage(parsed.settings?.uiLanguage),
             defaultTaskSource: taskProviderSettings.defaultTaskSource,
             visibleTaskProviders: taskProviderSettings.visibleTaskProviders,
@@ -3549,7 +3557,10 @@ export class Store {
       this.loadNeedsSave = true
     }
 
-    const migrated = this.migrateTelemetry(result, fileExistedOnLoad)
+    const migrated = this.migrateTabSwitchKeybindings(
+      this.migrateTelemetry(result, fileExistedOnLoad),
+      fileExistedOnLoad
+    )
 
     // githubCache lives in a sidecar file now (see getGithubCacheFile). A
     // legacy in-file cache (pre-sidecar build, or a downgrade round-trip) is
@@ -3585,6 +3596,34 @@ export class Store {
   //     the banner resolves (the consent resolver returns `pending_banner`
   //     until then, so nothing transmits).
   //   - `installId` — anonymous UUID v4. Stable across launches; not surfaced in the UI.
+  // One-shot cohort freeze for the tab-switch keybinding convention swap. Runs
+  // on every `load()` but is a no-op once `tabSwitchKeybindingSeed` is set. The
+  // decision must be frozen on the first post-swap launch: `fileExistedOnLoad`
+  // only distinguishes existing vs fresh on that first run (a fresh install's
+  // data file exists on every subsequent launch), so persist the verdict now.
+  private migrateTabSwitchKeybindings(
+    state: PersistedState,
+    fileExistedOnLoad: boolean
+  ): PersistedState {
+    const existing = state.settings?.tabSwitchKeybindingSeed
+    if (existing === 'pending' || existing === 'done') {
+      return state
+    }
+    // Why: mark dirty so the frozen cohort survives the next restart even if no
+    // other setting changes this session; without this a fresh install could be
+    // re-read as "existing" once its data file lands on disk.
+    this.loadNeedsSave = true
+    return {
+      ...state,
+      settings: {
+        ...state.settings,
+        // Existing installs pin the old chords via a keybindings.json seed;
+        // fresh installs need nothing beyond the new registry defaults.
+        tabSwitchKeybindingSeed: fileExistedOnLoad ? 'pending' : 'done'
+      }
+    }
+  }
+
   private migrateTelemetry(state: PersistedState, fileExistedOnLoad: boolean): PersistedState {
     const existing = state.settings?.telemetry
     // Why: the one-shot is complete only when all three invariants hold.
@@ -3672,9 +3711,7 @@ export class Store {
 
   /** Wait for any in-flight async disk write to complete. Used in tests. */
   async waitForPendingWrite(): Promise<void> {
-    if (this.pendingWrite) {
-      await this.pendingWrite
-    }
+    await Promise.all([this.pendingWrite, this.activeViewPreference.waitForPendingWrite()])
   }
 
   // Why githubCache is omitted: it is memory-only during the session (see
@@ -3707,7 +3744,10 @@ export class Store {
         browserKagiSessionLink: encryptOptionalSecret(this.state.ui.browserKagiSessionLink)
       }
     }
-    return JSON.stringify(stateToSave, null, 2)
+    // Why compact: ~20-30% fewer bytes (state-shape dependent; measured 21% on
+    // real state) and less serialize time on the sync-flush path; all readers
+    // JSON.parse, so on-disk formatting is irrelevant.
+    return JSON.stringify(stateToSave)
   }
 
   // Why: async writes avoid blocking the main Electron thread on every
@@ -3826,6 +3866,10 @@ export class Store {
     this.writeGeneration++
     this.pendingWrite = null
     this.writeToDiskSync({ force: asyncWriteWasInFlight })
+  }
+
+  flushActiveViewPreferenceOrThrow(): void {
+    this.activeViewPreference.flushOrThrow()
   }
 
   // ── Repos ──────────────────────────────────────────────────────────
@@ -5273,6 +5317,9 @@ export class Store {
     if ('minimizeToTrayOnClose' in updates) {
       sanitizedUpdates.minimizeToTrayOnClose = updates.minimizeToTrayOnClose === true
     }
+    if ('showMenuBarIcon' in updates) {
+      sanitizedUpdates.showMenuBarIcon = updates.showMenuBarIcon === true
+    }
     if ('disabledTuiAgents' in updates) {
       sanitizedUpdates.disabledTuiAgents = normalizeDisabledTuiAgents(updates.disabledTuiAgents)
     }
@@ -5461,16 +5508,30 @@ export class Store {
       ),
       featureTipsSeenIds: normalizeFeatureTipIds(this.state.ui?.featureTipsSeenIds),
       contextualToursSeenIds: normalizeContextualTourIds(this.state.ui?.contextualToursSeenIds),
-      featureInteractions: normalizeFeatureInteractions(this.state.ui?.featureInteractions)
+      featureInteractions: normalizeFeatureInteractions(this.state.ui?.featureInteractions),
+      activeView: this.activeViewPreference.get()
     }
   }
 
   updateUI(updates: Partial<PersistedState['ui']>): void {
     const sanitizedUpdates = stripMainOwnedTelemetryMarkerFromUI(updates)
-    const previousUI = this.getUI()
+    const { activeView, ...durableUpdates } = sanitizedUpdates
+    const activeViewChanged = this.activeViewPreference.set(activeView)
+    if (Object.keys(durableUpdates).length === 0) {
+      if (activeViewChanged) {
+        this.notifyUIChanged()
+      }
+      return
+    }
     const currentUI = {
       ...getDefaultUIState(),
       ...stripMainOwnedTelemetryMarkerFromUI(this.state.ui)
+    }
+    const previousUI = {
+      ...this.getUI(),
+      // Why: the legacy field stays unchanged as a migration/downgrade
+      // fallback; the profile sidecar is authoritative in current builds.
+      activeView: currentUI.activeView
     }
     const nextRightSidebarTab =
       sanitizedUpdates.rightSidebarTab !== undefined
@@ -5490,16 +5551,17 @@ export class Store {
             )
     const nextUI = {
       ...currentUI,
-      ...sanitizedUpdates,
-      groupBy: sanitizedUpdates.groupBy
-        ? normalizeGroupBy(sanitizedUpdates.groupBy)
+      ...durableUpdates,
+      groupBy: durableUpdates.groupBy
+        ? normalizeGroupBy(durableUpdates.groupBy)
         : normalizeGroupBy(this.state.ui?.groupBy),
-      sortBy: sanitizedUpdates.sortBy
-        ? normalizeSortBy(sanitizedUpdates.sortBy)
+      sortBy: durableUpdates.sortBy
+        ? normalizeSortBy(durableUpdates.sortBy)
         : normalizeSortBy(this.state.ui?.sortBy),
       projectOrderBy: updates.projectOrderBy
         ? normalizeProjectOrderBy(updates.projectOrderBy)
         : normalizeProjectOrderBy(this.state.ui?.projectOrderBy),
+      activeView: currentUI.activeView,
       rightSidebarTab: nextRightSidebarTab,
       rightSidebarExplorerView: nextRightSidebarExplorerView,
       worktreeCardProperties:
@@ -5574,6 +5636,9 @@ export class Store {
           : normalizeFeatureInteractions(this.state.ui?.featureInteractions)
     }
     if (persistedUIValuesEqual(previousUI, nextUI)) {
+      if (activeViewChanged) {
+        this.notifyUIChanged()
+      }
       return
     }
     this.state.ui = nextUI
@@ -6565,6 +6630,11 @@ export class Store {
       this.flushOrThrow()
     } catch (err) {
       console.error('[persistence] Failed to flush state:', err)
+    }
+    try {
+      this.flushActiveViewPreferenceOrThrow()
+    } catch (err) {
+      console.error('[active-view] Failed to flush preference:', err)
     }
     this.writeGithubCacheSnapshotSync()
   }

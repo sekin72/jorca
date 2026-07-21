@@ -59,6 +59,8 @@ import RightSidebar from './components/right-sidebar'
 import { StarNagCard } from './components/StarNagCard'
 import { StarNagAgentValueMomentObserver } from './components/star-nag/StarNagAgentValueMomentObserver'
 import { StarNagToastHost } from './components/star-nag/StarNagToastHost'
+import { SkillFreshnessNudge } from './components/skills/SkillFreshnessNudge'
+import { SkillFreshnessUpdateDialog } from './components/skills/SkillFreshnessUpdateDialog'
 import { TelemetryFirstLaunchSurface } from './components/TelemetryFirstLaunchSurface'
 import { ZoomOverlay } from './components/ZoomOverlay'
 import { onOnboardingReopened } from './components/onboarding/show-onboarding-event'
@@ -109,6 +111,11 @@ import { useGlobalFileDrop } from './hooks/useGlobalFileDrop'
 import { useRadixBodyPointerEventsRecovery } from './hooks/useRadixBodyPointerEventsRecovery'
 import { registerUpdaterBeforeUnloadBypass } from './lib/updater-beforeunload'
 import {
+  ORCA_APP_RESTART_ABORTED_EVENT,
+  ORCA_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT
+} from '../../shared/updater-renderer-events'
+import { ORCA_RENDERER_UNLOAD_PREVENTED_EVENT } from '../../shared/renderer-shutdown-events'
+import {
   buildWorkspaceSessionPayload,
   shouldPersistWorkspaceSession
 } from './lib/workspace-session'
@@ -119,11 +126,16 @@ import {
   installMainSurfacePersistence,
   loadMainSurface
 } from './lib/main-surface/main-surface-persistence'
+import { buildActiveViewUnloadPatch } from './lib/active-view-persist'
 import {
+  buildWorkspaceSessionHostSnapshots,
   fetchWorkspaceSessionWithRuntimeHostOwners,
-  patchWorkspaceSessionByHost,
-  persistWorkspaceSessionByHostSync
+  patchWorkspaceSessionByHost
 } from './lib/workspace-session-host-persistence'
+import {
+  createShutdownCheckpointBeforeUnloadHandler,
+  createShutdownCheckpointGuard
+} from './lib/shutdown-checkpoint-guard'
 import { collectFolderWorkspaceKeysFromSession } from './lib/workspace-session-hydration-keys'
 import {
   getStartupErrorFallbackUI,
@@ -171,7 +183,11 @@ import {
   type KeybindingContext,
   type PhysicalModifierToken
 } from '../../shared/keybindings'
-import { toRuntimeExecutionHostId, type ExecutionHostId } from '../../shared/execution-host'
+import {
+  isRuntimeOwnedSshTargetId,
+  toRuntimeExecutionHostId,
+  type ExecutionHostId
+} from '../../shared/execution-host'
 import {
   ModifierDoubleTapDetector,
   toModifierDoubleTapEvent
@@ -1019,7 +1035,13 @@ function App(): React.JSX.Element {
           // tabs through pty.attach on the relay. Passphrase-protected targets
           // are deferred to tab focus to avoid stacking credential dialogs at
           // startup before the user has context.
-          const connectionIds = sessionRead.session.activeConnectionIdsAtShutdown ?? []
+          // Why: runtime-owned (ephemeral-VM) targets must never be dialed from
+          // the renderer — ssh.connect would dispose the runtime layer's live
+          // relay session. Main's windowless-promotion path can persist such
+          // ids into this list, so filter at the consumption boundary too.
+          const connectionIds = (sessionRead.session.activeConnectionIdsAtShutdown ?? []).filter(
+            (targetId) => !isRuntimeOwnedSshTargetId(targetId)
+          )
           if (connectionIds.length > 0) {
             try {
               const SSH_RECONNECT_TIMEOUT_MS = 15_000
@@ -1361,8 +1383,8 @@ function App(): React.JSX.Element {
   // file — it's global, so it can't ride the per-worktree session pipeline above.
   useEffect(() => installMainSurfacePersistence(), [])
 
-  // On shutdown, capture terminal scrollback buffers and flush to disk.
-  // Runs synchronously in beforeunload: capture → Zustand set → sendSync → flush.
+  // On shutdown, capture terminal scrollback buffers and flush all durable
+  // renderer state through one synchronous main-process checkpoint.
   useEffect(() => {
     // Why: beforeunload fires twice during a manual quit — once from the
     // synthetic dispatch in the onWindowCloseRequested handler (captures
@@ -1371,39 +1393,50 @@ function App(): React.JSX.Element {
     // two firings, PTY exit events can arrive and unmount TerminalPanes,
     // emptying shutdownBufferCaptures. The guard prevents the second call
     // from overwriting the good session data with an empty snapshot.
-    let shutdownBuffersCaptured = false
-    const captureAndFlush = (): void => {
-      if (shutdownBuffersCaptured) {
-        return
-      }
-      if (!shouldPersistWorkspaceSession(useAppStore.getState())) {
-        return
-      }
-      for (const capture of shutdownBufferCaptures.values()) {
-        try {
-          capture({ includeLocalBuffers: false })
-        } catch {
-          // Don't let one pane's failure block the rest.
+    const shutdownCheckpoint = createShutdownCheckpointGuard(() => {
+      const shouldCaptureSession = shouldPersistWorkspaceSession(useAppStore.getState())
+      if (shouldCaptureSession) {
+        for (const capture of shutdownBufferCaptures.values()) {
+          try {
+            capture({ includeLocalBuffers: false })
+          } catch {
+            // Don't let one pane's failure block the rest.
+          }
         }
+        // Why: agent provider session ids live only in agentStatusByPaneKey,
+        // which is in-memory. Capture them into the persisted sleeping-session
+        // map so a daemon/session death while the app is closed can still
+        // cold-restore via the agent's resume command (#5232).
+        useAppStore.getState().captureAllSleepingAgentSessions('quit')
       }
-      // Why: agent provider session ids live only in agentStatusByPaneKey,
-      // which is in-memory. Capture them into the persisted sleeping-session
-      // map so a daemon/session death while the app is closed can still
-      // cold-restore via the agent's resume command (#5232).
-      useAppStore.getState().captureAllSleepingAgentSessions()
       // Why: re-read state after capture() calls populated scrollback buffers
       // into the store via Zustand setters. The earlier read is only for the
       // gating flags and would miss those updates.
       const freshState = useAppStore.getState()
-      persistWorkspaceSessionByHostSync(
-        window.api.session,
-        buildWorkspaceSessionPayload(freshState),
-        freshState
+      const sessionSnapshots = shouldCaptureSession
+        ? buildWorkspaceSessionHostSnapshots(buildWorkspaceSessionPayload(freshState), freshState)
+        : []
+      // Why: one blocking checkpoint closes the immediate-quit race for both
+      // the narrow view preference and the larger session recovery snapshots.
+      window.api.app.persistBeforeUnloadSync({
+        sessions: sessionSnapshots,
+        ui: buildActiveViewUnloadPatch(freshState)
+      })
+    })
+    const persistBeforeUnload = createShutdownCheckpointBeforeUnloadHandler(shutdownCheckpoint)
+    window.addEventListener('beforeunload', persistBeforeUnload)
+    window.addEventListener(ORCA_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.reset)
+    window.addEventListener(ORCA_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT, shutdownCheckpoint.reset)
+    window.addEventListener(ORCA_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.reset)
+    return () => {
+      window.removeEventListener('beforeunload', persistBeforeUnload)
+      window.removeEventListener(ORCA_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.reset)
+      window.removeEventListener(
+        ORCA_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+        shutdownCheckpoint.reset
       )
-      shutdownBuffersCaptured = true
+      window.removeEventListener(ORCA_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.reset)
     }
-    window.addEventListener('beforeunload', captureAndFlush)
-    return () => window.removeEventListener('beforeunload', captureAndFlush)
   }, [])
 
   // Why: beforeunload never fires on a hard kill (crash, forced update
@@ -1417,7 +1450,7 @@ function App(): React.JSX.Element {
       if (!shouldPersistWorkspaceSession(useAppStore.getState())) {
         return
       }
-      useAppStore.getState().captureAllSleepingAgentSessions()
+      useAppStore.getState().captureAllSleepingAgentSessions('periodic')
     }, SLEEPING_AGENT_RESUME_CAPTURE_INTERVAL_MS)
     return () => window.clearInterval(timer)
   }, [])
@@ -1467,10 +1500,10 @@ function App(): React.JSX.Element {
         hideAutomationGeneratedWorkspaces,
         showDotfilesByWorktree,
         filterRepoIds,
-        // Why: persist the active view so a reload restores it. openTaskPage etc.
-        // mutate activeView directly (not via setActiveView), so the value-keyed
-        // writer is what catches every transition.
-        activeView,
+        // Why (#9002): activeView is deliberately NOT included here. It used to
+        // ride this same 150ms writer (#8265), which meant every top-level view
+        // switch scheduled a full durable-state save. The narrow preference
+        // effect below persists it without touching the recovery snapshot.
         // Why: rides the same debounced save so dashboard auto-acks (which fire
         // on focus/visibility) and the in-memory ack cleanup paths in
         // agent-status.ts (close/dismiss) both flow to disk through map
@@ -1497,9 +1530,17 @@ function App(): React.JSX.Element {
     hideAutomationGeneratedWorkspaces,
     showDotfilesByWorktree,
     filterRepoIds,
-    activeView,
     acknowledgedAgentsByPaneKey
   ])
+
+  // Why (#9002): activeView has its own tiny profile preference, so it can track
+  // every switch without scheduling the multi-MB durable-state writer.
+  useEffect(() => {
+    if (!persistedUIReady) {
+      return
+    }
+    void window.api.ui.set({ activeView })
+  }, [activeView, persistedUIReady])
 
   // Apply theme to document
   useEffect(() => {
@@ -2853,10 +2894,20 @@ function App(): React.JSX.Element {
             >
               <RecentTabSwitcher />
             </RecoverableRenderErrorBoundary>
+            {/* Why: the dialog hosts a live terminal pane, which requires the
+                link-routing preference context; mounting outside crashes it. */}
+            <RecoverableRenderErrorBoundary
+              boundaryId="overlay.skill-freshness-update-dialog"
+              surface="overlay"
+              compact
+            >
+              <SkillFreshnessUpdateDialog />
+            </RecoverableRenderErrorBoundary>
           </LinkRoutingPreferenceDialogProvider>
         </ConfirmationDialogProvider>
       </TooltipProvider>
       <Toaster closeButton toastOptions={{ className: 'font-sans text-sm' }} />
+      <SkillFreshnessNudge />
       <PinnedTabCloseDialog />
       {/* Why: rendered last so it sits after all -webkit-app-region:drag elements
           in DOM order. Electron's hit-test for drag regions is DOM-order-based and

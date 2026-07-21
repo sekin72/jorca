@@ -6,6 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'el
 import { is } from '@electron-toolkit/utils'
 import type { AppIdentity } from '../../shared/app-identity'
 import type { FloatingTerminalCwdRequest, MarkdownDocument } from '../../shared/types'
+import { relaunchApp } from '../app-relaunch'
 import type { Store } from '../persistence'
 import { getDevInstanceIdentity } from '../startup/dev-instance-identity'
 import { isPwshAvailable } from '../pwsh'
@@ -29,6 +30,7 @@ import {
   resolveFloatingTerminalCwd
 } from './floating-workspace-directory'
 import { isMarkdownDocumentName, markdownDocumentFromFilePath } from './markdown-documents'
+import { registerRendererShutdownCheckpointHandler } from './renderer-shutdown-checkpoint'
 
 const KEYBOARD_INPUT_SOURCE_TIMEOUT_MS = 500
 const MAC_HITOOLBOX_DOMAIN = 'com.apple.HIToolbox'
@@ -261,6 +263,8 @@ async function readKeyboardInputSourceId(): Promise<string | null> {
 }
 
 export function registerAppHandlers(store: Store, options: RegisterAppHandlersOptions = {}): void {
+  registerRendererShutdownCheckpointHandler(store)
+
   ipcMain.handle('app:getFeatureWallAssetBaseUrl', (): string => getFeatureWallAssetBaseUrl())
 
   ipcMain.handle('app:getIdentity', (): AppIdentity => {
@@ -323,7 +327,7 @@ export function registerAppHandlers(store: Store, options: RegisterAppHandlersOp
       // Why: app.exit(0) skips before-quit/will-quit, so clean the Windows tray
       // explicitly before relaunching to avoid a stale notification-area icon.
       destroySystemTray()
-      app.relaunch()
+      relaunchApp('renderer-request')
       app.exit(0)
     }, 150)
   })
@@ -334,7 +338,7 @@ export function registerAppHandlers(store: Store, options: RegisterAppHandlersOp
     // checkpoints, runtime metadata, and telemetry flush before exit.
     await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
     setTimeout(() => {
-      app.relaunch()
+      relaunchApp('admin-restart')
       app.quit()
     }, 150)
   })
