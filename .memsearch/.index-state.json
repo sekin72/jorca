@@ -1,14 +1,16 @@
 {
   "collection": "ms_jorca_3ab9aba4",
   "failed_files": [],
-  "last_completed_at": "2026-07-20T18:17:47.586264Z",
+  "last_completed_at": "2026-07-21T09:02:35.441788Z",
   "last_error": "ValueError: No API key was provided. Please pass a valid API key. Learn how to create an API key at https://ai.google.dev/gemini-api/docs/api-key.",
-  "last_failed_at": "2026-07-20T18:17:47.586264Z",
-  "last_started_at": "2026-07-20T18:17:46.927324Z",
+  "last_failed_at": "2026-07-21T09:02:35.441788Z",
+  "last_started_at": "2026-07-21T09:02:35.025137Z",
   "milvus_uri": "~/.memsearch/milvus.db",
   "operation": "index",
-  "paths": ["/Users/kaan/Workspace/jorca/.memsearch/memory"],
+  "paths": [
+    "/Users/kaan/Workspace/jorca/.memsearch/memory"
+  ],
   "schema_version": 1,
   "status": "error",
-  "updated_at": "2026-07-20T18:17:47.586264Z"
+  "updated_at": "2026-07-21T09:02:35.441788Z"
 }

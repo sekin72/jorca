@@ -4,6 +4,26 @@
 
 import { ZOOM_MIN, ZOOM_MAX } from '../../../../shared/canvas-node'
 import type { CanvasGet, CanvasSet, CanvasStoreActions } from './canvas-store-types'
+import { useAppStore } from '../../store'
+
+type LayoutGeometry = {
+  padTop: number
+  padBottom: number
+  padLeft: number
+  padRight: number
+  gap: number
+}
+
+function readLayoutGeometry(): LayoutGeometry {
+  const s = useAppStore.getState().settings
+  return {
+    padTop: s?.canvasPaddingTop ?? 40,
+    padBottom: s?.canvasPaddingBottom ?? 50,
+    padLeft: s?.canvasPaddingLeft ?? 50,
+    padRight: s?.canvasPaddingRight ?? 50,
+    gap: s?.canvasNodeGap ?? 10
+  }
+}
 
 type ViewportActions = Pick<
   CanvasStoreActions,
@@ -96,20 +116,23 @@ export function createViewportSlice(set: CanvasSet, get: CanvasGet): ViewportAct
         return
       }
 
+      const settings = useAppStore.getState().settings
+      const fitZoom = settings?.canvasFitZoom ?? 1.00
+      const { padTop, padBottom, padLeft, padRight } = readLayoutGeometry()
+
       const minX = Math.min(...nodeList.map((n) => n.origin.x))
       const minY = Math.min(...nodeList.map((n) => n.origin.y))
       const maxX = Math.max(...nodeList.map((n) => n.origin.x + n.size.width))
       const maxY = Math.max(...nodeList.map((n) => n.origin.y + n.size.height))
-
-      const padding = 60
-      const contentW = maxX - minX + padding * 2
-      const contentH = maxY - minY + padding * 2
-      const zoom = clampZoom(Math.min(cs.width / contentW, cs.height / contentH))
+      const contentW = maxX - minX
+      const contentH = maxY - minY
+      const availW = cs.width - padLeft - padRight
+      const availH = cs.height - padTop - padBottom
       set({
-        zoomLevel: zoom,
+        zoomLevel: fitZoom,
         viewportOffset: {
-          x: (cs.width - contentW * zoom) / 2 - (minX - padding) * zoom,
-          y: (cs.height - contentH * zoom) / 2 - (minY - padding) * zoom
+          x: padLeft + (availW - contentW * fitZoom) / 2 - minX * fitZoom,
+          y: padTop + (availH - contentH * fitZoom) / 2 - minY * fitZoom
         }
       })
     }

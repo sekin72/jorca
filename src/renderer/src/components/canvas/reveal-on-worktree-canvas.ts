@@ -12,6 +12,6 @@ export function revealOnWorktreeCanvas(worktreeId: string, panelId: string): voi
   }
   const nodeId = store.getState().nodeForPanel(panelId)
   if (nodeId) {
-    store.getState().focusAndCenter(nodeId)
+    store.getState().focusAndFit(nodeId)
   }
 }

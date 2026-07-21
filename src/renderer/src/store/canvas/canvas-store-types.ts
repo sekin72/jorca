@@ -85,6 +85,8 @@ export type CanvasStoreActions = {
   unfocus: () => void
   toggleMaximize: (id: CanvasNodeId) => void
   focusAndCenter: (id: CanvasNodeId) => void
+  /** Center the node and zoom so it fills the viewport (uses layout padding). */
+  focusAndFit: (id: CanvasNodeId) => void
   moveToFront: (id: CanvasNodeId) => void
   moveToBack: (id: CanvasNodeId) => void
   togglePin: (id: CanvasNodeId) => void

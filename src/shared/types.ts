@@ -2967,6 +2967,22 @@ export type GlobalSettings = {
   canvasAutoFocusVisible?: boolean
   /** On node create, show numbered placement candidates instead of auto-placing. */
   canvasPlacementPicker?: boolean
+  /** Default window width for Group / Tidy / Stack actions. */
+  canvasDefaultNodeWidth?: number
+  /** Default window height for Group / Tidy / Stack actions. */
+  canvasDefaultNodeHeight?: number
+  /** Zoom level after Group / Tidy / Stack (as a multiplier, e.g. 1.01 = 101%). */
+  canvasFitZoom?: number
+  /** Top padding (canvas units) shared by every layout action. */
+  canvasPaddingTop?: number
+  /** Bottom padding (canvas units) shared by every layout action. */
+  canvasPaddingBottom?: number
+  /** Left padding (canvas units) shared by every layout action. */
+  canvasPaddingLeft?: number
+  /** Right padding (canvas units) shared by every layout action. */
+  canvasPaddingRight?: number
+  /** Gap between nodes (canvas units) in every layout action. */
+  canvasNodeGap?: number
   /** Experimental: automatically sleep completed, resumable background agent terminals. */
   experimentalAgentHibernation?: boolean
   /** Milliseconds a completed agent must stay idle before hibernation can be considered. */

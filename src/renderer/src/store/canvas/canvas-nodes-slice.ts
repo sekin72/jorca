@@ -11,6 +11,7 @@ import type {
 } from './canvas-store-types'
 import { generateId, findFreePosition, DEFAULT_NODE_SIZE } from './canvas-node-placement'
 import { focusedNodeId } from './canvas-selection-model'
+import { useAppStore } from '../../store'
 
 type NodesActions = Pick<
   CanvasStoreActions,
@@ -25,6 +26,7 @@ type NodesActions = Pick<
   | 'unfocus'
   | 'toggleMaximize'
   | 'focusAndCenter'
+  | 'focusAndFit'
   | 'moveToFront'
   | 'moveToBack'
   | 'togglePin'
@@ -242,6 +244,37 @@ export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
         }
       }
       set(next)
+    },
+
+    focusAndFit(id) {
+      const state = get()
+      const node = state.nodes[id]
+      if (!node) {
+        return
+      }
+      const cs = state.containerSize
+      if (cs.width === 0 || cs.height === 0) {
+        return
+      }
+      const settings = useAppStore.getState().settings
+      const fitZoom = settings?.canvasFitZoom ?? 1.00
+      const padTop = settings?.canvasPaddingTop ?? 40
+      const padBottom = settings?.canvasPaddingBottom ?? 50
+      const padLeft = settings?.canvasPaddingLeft ?? 50
+      const padRight = settings?.canvasPaddingRight ?? 50
+      const availW = cs.width - padLeft - padRight
+      const availH = cs.height - padTop - padBottom
+      set({
+        nodes: { ...state.nodes, [id]: { ...node, zOrder: state.nextZOrder } },
+        nextZOrder: state.nextZOrder + 1,
+        selection: [id],
+        selectionActive: true,
+        zoomLevel: fitZoom,
+        viewportOffset: {
+          x: padLeft + (availW - node.size.width * fitZoom) / 2 - node.origin.x * fitZoom,
+          y: padTop + (availH - node.size.height * fitZoom) / 2 - node.origin.y * fitZoom
+        }
+      })
     },
 
     moveToFront(id) {
