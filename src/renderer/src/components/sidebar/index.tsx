@@ -143,10 +143,9 @@ function Sidebar({
         {sidebarOpen && (
           <>
             {/* Fixed controls */}
+            <MainSurfaceSidebarEntry />
             <SidebarNav />
             <SidebarHeader onWorkspaceBoardMenuOpenChange={setWorkspaceBoardMenuOpen} />
-
-            <MainSurfaceSidebarEntry />
 
             <WorktreeList
               scrollOffsetRef={worktreeScrollOffsetRef}

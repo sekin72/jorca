@@ -79,7 +79,7 @@ describe('showOsc52ClipboardBlockedToast', () => {
 
     for (const locale of locales) {
       expect(
-        locale.auto.components.terminal.pane.osc52.clipboard.blocked.toast['7cf51f74fd']
+        locale.auto.lib.agent.catalog['0baad2d5d2']
       ).toContain('Grok')
     }
   })

@@ -100,7 +100,7 @@ export default function CanvasZoomReadout({ store }: { store: BoundStore }): Rea
         disabled={!hasNodes}
         onClick={stackRow}
       >
-        <StretchHorizontal className={ICON} />
+        <StretchVertical className={ICON} />
       </BarButton>
       <BarButton
         label={t('stackColumn', 'Stack selection in a column')}
@@ -108,7 +108,7 @@ export default function CanvasZoomReadout({ store }: { store: BoundStore }): Rea
         disabled={!hasNodes}
         onClick={stackColumn}
       >
-        <StretchVertical className={ICON} />
+        <StretchHorizontal className={ICON} />
       </BarButton>
     </div>
   )
