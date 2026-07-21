@@ -24,7 +24,6 @@ import { CanvasContextMenu } from './CanvasContextMenu'
 import CanvasZoomReadout from './CanvasZoomReadout'
 import CanvasMinimap from './CanvasMinimap'
 import CanvasShortcutsPane from './CanvasShortcutsPane'
-import { CanvasTerminalOverlayContext } from './CanvasTerminalOverlay'
 import EmptyCanvasOverlay from './EmptyCanvasOverlay'
 import { openAbsoluteFileAsCanvasNode } from './canvas-node-creation'
 import { liveKeepMountedPanelIds } from './canvas-pane-hosting'
@@ -34,6 +33,31 @@ import { useCanvasShortcuts } from './use-canvas-shortcuts'
 import { isMouseWheel } from './wheel-intent'
 
 type BoundStore = UseBoundStore<StoreApi<CanvasStore>>
+
+// Panel content (xterm, Monaco, webviews) lives inside the world transform, so
+// during a pan/zoom gesture it is bitmap-scaled and its own mouse hit-testing
+// would fire at the wrong (non-1) scale. While `.canvas-interacting` is set we
+// make that content inert so gestures land on the canvas, not the panel (Cate's
+// approach — replaces the old scale-1 terminal portal). Injected once, module-level.
+let interactingStyleInjected = false
+function injectCanvasInteractingStyle(): void {
+  if (interactingStyleInjected) {
+    return
+  }
+  interactingStyleInjected = true
+  const style = document.createElement('style')
+  style.textContent = `
+    .canvas-interacting .xterm,
+    .canvas-interacting .xterm-screen,
+    .canvas-interacting .xterm-helper-textarea,
+    .canvas-interacting .monaco-editor,
+    .canvas-interacting iframe,
+    .canvas-interacting webview {
+      pointer-events: none !important;
+    }
+  `
+  document.head.appendChild(style)
+}
 
 export default function CanvasSurface({
   store,
@@ -46,7 +70,6 @@ export default function CanvasSurface({
 }): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
   const willChangeReset = useRef(0)
   const panStart = useRef<{ clientX: number; clientY: number; ox: number; oy: number } | null>(null)
   // Eased-zoom state (ported from Cate): the wheel sets an accumulating target
@@ -56,6 +79,15 @@ export default function CanvasSurface({
   const cursorView = useRef({ x: 0, y: 0 })
   const pendingPan = useRef({ x: 0, y: 0 })
   const panRaf = useRef(0)
+
+  // Inject the gesture-inert stylesheet once; toggle `.canvas-interacting` on the
+  // surface while a pan/zoom is active so panel content doesn't eat the gesture.
+  useEffect(() => {
+    injectCanvasInteractingStyle()
+  }, [])
+  const setInteracting = useRef((active: boolean): void => {
+    containerRef.current?.classList.toggle('canvas-interacting', active)
+  }).current
 
   const [isFileDragOver, setIsFileDragOver] = useState(false)
   const [contextMenu, setContextMenu] = useState<{
@@ -158,6 +190,7 @@ export default function CanvasSurface({
       if (Math.abs(diff) < 0.001) {
         zoomTarget.current = null
         zoomRaf.current = 0
+        setInteracting(false)
         return
       }
       zoomRaf.current = requestAnimationFrame(tick)
@@ -174,6 +207,7 @@ export default function CanvasSurface({
       const base = zoomTarget.current ?? store.getState().zoomLevel
       const next = mouse ? base * (1 + Math.sign(-e.deltaY) * 0.15) : base + -e.deltaY * 0.01
       zoomTarget.current = Math.min(Math.max(next, ZOOM_MIN), ZOOM_MAX)
+      setInteracting(true)
       if (!zoomRaf.current) {
         zoomRaf.current = requestAnimationFrame(tick)
       }
@@ -191,14 +225,8 @@ export default function CanvasSurface({
 
       // Plain scroll over the FOCUSED pane scrolls that pane's own content
       // (editor code / terminal scrollback), not the canvas.
-      // Portaled terminals live outside [data-canvas-node] in the overlay
-      // div, so also check for [data-canvas-overlay-terminal].
-      const nodeEl = (e.target as HTMLElement).closest?.(
-        '[data-canvas-node], [data-canvas-overlay-terminal]'
-      )
-      const nodeId =
-        nodeEl?.getAttribute('data-canvas-node') ??
-        nodeEl?.getAttribute('data-canvas-overlay-terminal')
+      const nodeEl = (e.target as HTMLElement).closest?.('[data-canvas-node]')
+      const nodeId = nodeEl?.getAttribute('data-canvas-node')
       if (nodeId && nodeId === focusedNodeId(store.getState())) {
         return
       }
@@ -237,7 +265,7 @@ export default function CanvasSurface({
         cancelAnimationFrame(panRaf.current)
       }
     }
-  }, [store])
+  }, [store, setInteracting])
 
   const onBackgroundPointerDown = (e: React.PointerEvent): void => {
     // Nodes handle their own drags; only pan when the press starts on empty
@@ -245,17 +273,6 @@ export default function CanvasSurface({
     // menu and its backdrop so their clicks aren't stolen by setPointerCapture.
     const onNode = (e.target as HTMLElement).closest('[data-canvas-node]')
     if (onNode && e.button !== 1) {
-      return
-    }
-    // Portaled terminals live outside [data-canvas-node] in the overlay div —
-    // clicking one should focus the node rather than clearing selection and
-    // starting a pan.
-    const overlayTerminal = (e.target as HTMLElement).closest('[data-canvas-overlay-terminal]')
-    if (overlayTerminal && e.button !== 1) {
-      const nodeId = overlayTerminal.getAttribute('data-canvas-overlay-terminal')
-      if (nodeId) {
-        store.getState().focusNode(nodeId)
-      }
       return
     }
     if ((e.target as HTMLElement).closest('[role="menu"], [data-canvas-menu-backdrop]')) {
@@ -283,6 +300,9 @@ export default function CanvasSurface({
       if (!s) {
         return
       }
+      // First actual movement → mark interacting so panel content goes inert for
+      // the drag (a plain click that never moves stays interactive).
+      setInteracting(true)
       store.getState().setViewportOffset({
         x: s.ox + (ev.clientX - s.clientX),
         y: s.oy + (ev.clientY - s.clientY)
@@ -290,6 +310,7 @@ export default function CanvasSurface({
     }
     const onUp = (ev: PointerEvent): void => {
       panStart.current = null
+      setInteracting(false)
       el.releasePointerCapture(ev.pointerId)
       el.removeEventListener('pointermove', onMove)
       el.removeEventListener('pointerup', onUp)
@@ -367,26 +388,18 @@ export default function CanvasSurface({
       onDragLeave={() => setIsFileDragOver(false)}
       onDrop={onFileDrop}
     >
-      <CanvasTerminalOverlayContext.Provider value={overlayRef}>
-        <CanvasGrid store={store} style={gridStyle} />
-        {nodeCount === 0 ? <EmptyCanvasOverlay /> : null}
-        {/* transform is applied imperatively (see the world-transform effect) so
-            pan/zoom never re-renders React. */}
-        <div ref={worldRef} className="absolute left-0 top-0 origin-top-left">
-          {visibleIds.map((id) => (
-            <CanvasNode key={id} store={store} nodeId={id} surfaceId={surfaceId} />
-          ))}
-          <CanvasSnapGuides store={store} />
-          <CanvasGhostPlacement store={store} />
-        </div>
-        {/* Terminal overlay: siblings to worldRef with no transform so
-            xterm mouse coordinates stay at layout scale 1. Children are
-            portaled in from CanvasNodePane and positioned at screen-space
-            rects computed from canvasToView. */}
-        <div ref={overlayRef} className="pointer-events-none absolute inset-0 overflow-hidden">
-          {/* Portal targets have pointer-events:auto set inline */}
-        </div>
-      </CanvasTerminalOverlayContext.Provider>
+      <CanvasGrid store={store} style={gridStyle} />
+      {nodeCount === 0 ? <EmptyCanvasOverlay /> : null}
+      {/* transform is applied imperatively (see the world-transform effect) so
+          pan/zoom never re-renders React. Panel content (terminals, editors)
+          lives inside this transform and scales with it (Cate's model). */}
+      <div ref={worldRef} className="absolute left-0 top-0 origin-top-left">
+        {visibleIds.map((id) => (
+          <CanvasNode key={id} store={store} nodeId={id} surfaceId={surfaceId} />
+        ))}
+        <CanvasSnapGuides store={store} />
+        <CanvasGhostPlacement store={store} />
+      </div>
       {isFileDragOver ? (
         <div className="pointer-events-none absolute inset-0 z-20 ring-2 ring-inset ring-ring/60" />
       ) : null}
