@@ -30,28 +30,28 @@ import { translate } from '@/i18n/i18n'
 type BoundStore = UseBoundStore<StoreApi<CanvasStore>>
 
 const HANDLES: { handle: ResizeHandle; className: string; cursor: string }[] = [
-  { handle: 'n', className: 'top-0 left-2 right-2 h-1.5 -translate-y-1/2', cursor: 'ns-resize' },
-  { handle: 's', className: 'bottom-0 left-2 right-2 h-1.5 translate-y-1/2', cursor: 'ns-resize' },
-  { handle: 'e', className: 'right-0 top-2 bottom-2 w-1.5 translate-x-1/2', cursor: 'ew-resize' },
-  { handle: 'w', className: 'left-0 top-2 bottom-2 w-1.5 -translate-x-1/2', cursor: 'ew-resize' },
+  { handle: 'n', className: 'top-0 left-2 right-2 h-2', cursor: 'ns-resize' },
+  { handle: 's', className: 'bottom-0 left-2 right-2 h-2', cursor: 'ns-resize' },
+  { handle: 'e', className: 'right-0 top-2 bottom-2 w-2', cursor: 'ew-resize' },
+  { handle: 'w', className: 'left-0 top-2 bottom-2 w-2', cursor: 'ew-resize' },
   {
     handle: 'ne',
-    className: 'top-0 right-0 h-3 w-3 -translate-y-1/2 translate-x-1/2',
+    className: 'top-0 right-0 h-3 w-3',
     cursor: 'nesw-resize'
   },
   {
     handle: 'nw',
-    className: 'top-0 left-0 h-3 w-3 -translate-y-1/2 -translate-x-1/2',
+    className: 'top-0 left-0 h-3 w-3',
     cursor: 'nwse-resize'
   },
   {
     handle: 'se',
-    className: 'bottom-0 right-0 h-3 w-3 translate-y-1/2 translate-x-1/2',
+    className: 'bottom-0 right-0 h-3 w-3',
     cursor: 'nwse-resize'
   },
   {
     handle: 'sw',
-    className: 'bottom-0 left-0 h-3 w-3 translate-y-1/2 -translate-x-1/2',
+    className: 'bottom-0 left-0 h-3 w-3',
     cursor: 'nesw-resize'
   }
 ]
@@ -279,6 +279,7 @@ function CanvasNode({
           <div
             key={handle}
             data-canvas-node-control
+            data-handle={handle}
             className={`absolute ${className}`}
             style={{ cursor }}
             onPointerDown={startResize(handle)}

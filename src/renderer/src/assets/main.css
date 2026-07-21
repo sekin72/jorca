@@ -700,6 +700,74 @@
   background: var(--tab-group-split-divider-strong);
 }
 
+/* Canvas node resize handle hit areas — visible hover cue so the grab surface
+   is discoverable at any edge. Each handle renders an inset line on hover. */
+[data-canvas-node-control] {
+  z-index: 1;
+}
+[data-canvas-node-control]::after {
+  content: '';
+  position: absolute;
+  border-radius: 1px;
+  transition: background 80ms ease;
+  pointer-events: none;
+}
+[data-canvas-node-control]:hover::after {
+  background: var(--ring);
+}
+
+/* Edge handles: thin centered line along the node edge */
+[data-canvas-node-control][data-handle='n']::after {
+  bottom: 0;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+}
+[data-canvas-node-control][data-handle='s']::after {
+  top: 0;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+}
+[data-canvas-node-control][data-handle='e']::after {
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+}
+[data-canvas-node-control][data-handle='w']::after {
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+}
+
+/* Corner handles: small 6px square at the inside corner */
+[data-canvas-node-control][data-handle='ne']::after {
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+}
+[data-canvas-node-control][data-handle='nw']::after {
+  bottom: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+}
+[data-canvas-node-control][data-handle='se']::after {
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+}
+[data-canvas-node-control][data-handle='sw']::after {
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+}
+
 /* ── Titlebar ────────────────────────────────────────── */
 
 /* Why: Radix portals (dropdowns, popovers, dialogs, sheets) render at the

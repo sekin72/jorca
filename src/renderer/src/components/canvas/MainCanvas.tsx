@@ -12,6 +12,7 @@ import { Maximize, LayoutGrid, Columns3, Grid3x3 } from 'lucide-react'
 import { getMainCanvasStore } from '../../store/canvas/canvas-store'
 import { MAIN_SURFACE_ID } from '../../../../shared/canvas-node'
 import { CanvasStoreProvider } from './canvas-store-context'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip'
 import CanvasSurface from './CanvasSurface'
 import { translate } from '@/i18n/i18n'
 
@@ -25,15 +26,19 @@ function ArrangeButton({
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-    >
-      {children}
-    </button>
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          onClick={onClick}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent sideOffset={4}>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 

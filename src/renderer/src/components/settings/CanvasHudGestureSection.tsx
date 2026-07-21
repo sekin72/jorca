@@ -1,5 +1,6 @@
 import React from 'react'
 import { getCanvasGestureRows } from '../canvas/canvas-shortcut-hud-visibility'
+import { canvasHudIcon } from '../canvas/canvas-shortcut-hud-icons'
 import { CanvasHudToggle } from './CanvasHudToggle'
 import { translate } from '@/i18n/i18n'
 
@@ -13,22 +14,26 @@ export function CanvasHudGestureSection(): React.JSX.Element {
         {translate('auto.components.settings.CanvasHudGestureSection.title', 'Canvas gestures')}
       </h3>
       <div className="flex flex-col gap-3">
-        {rows.map((row) => (
-          <div key={row.id} className="flex items-center gap-2">
-            <CanvasHudToggle id={row.id} />
-            <span className="min-w-0 flex-1 truncate text-sm">{row.label}</span>
-            <span className="flex shrink-0 items-center gap-0.5">
-              {row.keys.map((key) => (
-                <span
-                  key={key}
-                  className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground"
-                >
-                  {key}
-                </span>
-              ))}
-            </span>
-          </div>
-        ))}
+        {rows.map((row) => {
+          const Icon = canvasHudIcon(row.id)
+          return (
+            <div key={row.id} className="flex items-center gap-2">
+              <CanvasHudToggle id={row.id} />
+              {Icon && <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
+              <span className="min-w-0 flex-1 truncate text-sm">{row.label}</span>
+              <span className="flex shrink-0 items-center gap-0.5">
+                {row.keys.map((key) => (
+                  <span
+                    key={key}
+                    className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground"
+                  >
+                    {key}
+                  </span>
+                ))}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

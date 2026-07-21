@@ -62,13 +62,13 @@ export function closeCanvasNode(store: BoundStore, nodeId: string): void {
 }
 
 /** Close routed by surface: closing a node ON the Main surface sends the window
- *  home to its worktree (un-borrow, keep it alive) and STAYS on Main; closing a
- *  node on a worktree canvas disposes it (docs/main-surface.md — owner change
- *  2026-07-14). Wired to the node X button and Cmd/Ctrl+W. */
+ *  home to its worktree (un-borrow, keep it alive) and navigates to that
+ *  worktree; closing a node on a worktree canvas disposes it (docs/main-surface.md
+ *  — owner change 2026-07-14). Wired to the node X button and Cmd/Ctrl+W. */
 export function closeOrReturnCanvasNode(store: BoundStore, nodeId: string): void {
   const node = store.getState().nodes[nodeId]
   if (node?.sourceWorktreeId) {
-    returnFromMain(nodeId, { navigate: false })
+    returnFromMain(nodeId, { navigate: true })
     return
   }
   closeCanvasNode(store, nodeId)

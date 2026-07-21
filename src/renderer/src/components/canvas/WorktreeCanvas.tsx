@@ -8,8 +8,8 @@ import { useActiveWorktreeId } from '../../store/selectors'
 import { useAppStore } from '../../store'
 import { getOrCreateCanvasStoreForWorktree } from '../../store/canvas/canvas-store'
 import { CanvasStoreProvider } from './canvas-store-context'
+import { TooltipProvider } from '../ui/tooltip'
 import CanvasSurface from './CanvasSurface'
-import CanvasToolbar from './CanvasToolbar'
 import { CanvasLayoutsDialog } from './CanvasLayoutsDialog'
 
 const CanvasOverview = lazy(() => import('./overview/CanvasOverview'))
@@ -27,28 +27,33 @@ export default function WorktreeCanvas(): React.JSX.Element | null {
   // worktree mounted underneath so its panes survive the swap.
   if (mainSurfaceActive) {
     return (
-      <Suspense fallback={null}>
-        <MainCanvas />
-      </Suspense>
+      <TooltipProvider>
+        <Suspense fallback={null}>
+          <MainCanvas />
+        </Suspense>
+      </TooltipProvider>
     )
   }
   if (overviewActive) {
     return (
-      <Suspense fallback={null}>
-        <CanvasOverview />
-      </Suspense>
+      <TooltipProvider>
+        <Suspense fallback={null}>
+          <CanvasOverview />
+        </Suspense>
+      </TooltipProvider>
     )
   }
   if (!store) {
     return null
   }
   return (
-    <CanvasStoreProvider store={store}>
-      <div className="relative h-full w-full">
-        <CanvasSurface store={store} surfaceId={worktreeId ?? undefined} />
-        <CanvasToolbar />
-        <CanvasLayoutsDialog />
-      </div>
-    </CanvasStoreProvider>
+    <TooltipProvider>
+      <CanvasStoreProvider store={store}>
+        <div className="relative h-full w-full">
+          <CanvasSurface store={store} surfaceId={worktreeId ?? undefined} />
+          <CanvasLayoutsDialog />
+        </div>
+      </CanvasStoreProvider>
+    </TooltipProvider>
   )
 }

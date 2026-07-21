@@ -13150,7 +13150,8 @@
           "reset": "Reset zoom to 100%",
           "zoomIn": "Zoom in",
           "fit": "Fit all windows to view",
-          "arrange": "Auto-arrange windows in a grid"
+          "arrange": "Auto-arrange windows in a grid",
+          "stackColumn": "Stack selection in a column"
         },
         "CanvasMinimap": {
           "show": "Show minimap",

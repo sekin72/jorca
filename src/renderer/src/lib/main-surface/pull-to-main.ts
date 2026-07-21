@@ -4,6 +4,7 @@
 // renders a non-live placeholder — preserving the single-mount invariant that a
 // tab's live pane is only ever in one React tree at a time (docs/main-surface.md).
 
+import { useAppStore } from '../../store'
 import { getMainCanvasStore, peekCanvasStoreForWorktree } from '../../store/canvas/canvas-store'
 
 /** Move a source worktree node's view onto Main. Returns the new Main node id,
@@ -25,5 +26,8 @@ export function pullToMain(sourceWorktreeId: string, nodeId: string): string | n
   // Flag the source last: if addNode somehow threw, the source stays live rather
   // than becoming a placeholder for a pane that never made it to Main.
   sourceStore.getState().setNodeBorrowed(nodeId, true)
+
+  // Follow the node to Main so the workspace-to-viewer immediately sees it.
+  useAppStore.getState().setMainSurfaceActive(true)
   return mainNodeId
 }

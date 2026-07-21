@@ -11,6 +11,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { SearchableSetting } from './SearchableSetting'
+import { canvasHudIcon } from '../canvas/canvas-shortcut-hud-icons'
 import { ShortcutBindingSubRow } from './ShortcutBindingSubRow'
 import { ShortcutRecorderButton } from './ShortcutRecorderButton'
 import { ShortcutRemoveButton } from './ShortcutRemoveButton'
@@ -119,6 +120,10 @@ export function ShortcutCommandBlock({
     >
       <div className="flex min-h-9 items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-accent/40 focus-within:bg-accent/40">
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          {(() => {
+            const Icon = canvasHudIcon(item.id)
+            return Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground" /> : null
+          })()}
           <span
             className={cn(
               'truncate text-sm',
