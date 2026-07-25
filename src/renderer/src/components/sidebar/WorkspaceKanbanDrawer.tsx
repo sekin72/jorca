@@ -4,8 +4,15 @@ import { useAppStore } from '@/store'
 import { useAllWorktrees, useRepoMap } from '@/store/selectors'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { toast } from 'sonner'
+import { activateTabAndFocusPane } from '@/lib/activate-tab-and-focus-pane'
+import { activateAndRevealWorktree } from '@/lib/worktree-activation'
+import { revealOnMain } from '@/lib/main-surface/reveal-on-main'
+import { dismissStaleAgentRowByKey } from '../terminal-pane/stale-agent-row'
+import { parsePaneKey } from '../../../../shared/stable-pane-id'
+import { useAllWorktreeAgentRows } from './use-all-worktree-agent-rows'
+import WorkspaceAgentsLaneGrid from './WorkspaceAgentsLaneGrid'
 import WorkspaceKanbanAreaSelectionOverlay from './WorkspaceKanbanAreaSelectionOverlay'
-import WorkspaceKanbanDrawerHeader from './WorkspaceKanbanDrawerHeader'
+import WorkspaceKanbanDrawerHeader, { type BoardView } from './WorkspaceKanbanDrawerHeader'
 import WorkspaceKanbanLaneGrid from './WorkspaceKanbanLaneGrid'
 import WorkspaceKanbanPinDropTarget from './WorkspaceKanbanPinDropTarget'
 import {
@@ -161,6 +168,8 @@ export default function WorkspaceKanbanDrawer({
   const areaSelectionOverlayRef = useRef<HTMLDivElement>(null)
   const [dragOverStatus, setDragOverStatus] = useState<WorkspaceStatus | null>(null)
   const [pinDragOver, setPinDragOver] = useState(false)
+  const [boardView, setBoardView] = useState<BoardView>('agents')
+  const dismissRetainedAgent = useAppStore((s) => s.dismissRetainedAgent)
   const { canCreateWorktree, createWorktreeForStatus } = useWorkspaceKanbanCreateWorktree()
   const visibleWorktreeIdSet = useVisibleWorkspaceKanbanWorktreeIds({
     allWorktrees,
@@ -190,6 +199,60 @@ export default function WorkspaceKanbanDrawer({
       })),
     [worktreesByStatus, workspaceStatuses]
   )
+
+  // Agents board view: build agent rows per worktree using the same selectors as useWorktreeAgentRows
+  const agentsByWorktreeId = useAllWorktreeAgentRows(allWorktrees.map((w) => w.id))
+
+  // Worktrees shown in agents view: all visible worktrees
+  const agentsBoardWorktrees = useMemo(
+    () => allWorktrees.filter((w) => visibleWorktreeIdSet.has(w.id)),
+    [allWorktrees, visibleWorktreeIdSet]
+  )
+
+  const handleAgentActivate = useCallback(
+    (tabId: string, paneKey: string) => {
+      const parsed = parsePaneKey(paneKey)
+      if (!parsed || parsed.tabId !== tabId) {
+        dismissStaleAgentRowByKey(paneKey)
+        return
+      }
+      if (revealOnMain(tabId)) {
+        return
+      }
+      // Resolve the worktree that owns this tab, then route through the standard
+      // activation path so cross-repo jumps set activeRepoId + nav history.
+      const tabsByWorktree = useAppStore.getState().tabsByWorktree
+      const ownerWorktreeId = Object.keys(tabsByWorktree).find((wtId) =>
+        (tabsByWorktree[wtId] ?? []).some((t) => t.id === tabId)
+      )
+      if (ownerWorktreeId) {
+        activateAndRevealWorktree(ownerWorktreeId)
+      }
+      activateTabAndFocusPane(tabId, parsed.leafId, {
+        ackPaneKeyOnSuccess: paneKey,
+        flashFocusedPane: true,
+        scrollToBottomIfOutputSinceLastView: true
+      })
+      onOpenChange(false)
+    },
+    [onOpenChange]
+  )
+
+  const handleAgentDismiss = useCallback(
+    (paneKey: string) => {
+      dismissRetainedAgent(paneKey)
+    },
+    [dismissRetainedAgent]
+  )
+
+  const handleAgentWorktreeActivate = useCallback(
+    (worktreeId: string) => {
+      activateAndRevealWorktree(worktreeId)
+      onOpenChange(false)
+    },
+    [onOpenChange]
+  )
+
   const {
     selectedWorktreeIds,
     selectedWorktrees,
@@ -727,6 +790,8 @@ export default function WorkspaceKanbanDrawer({
           selectedCount={selectedWorktrees.length}
           workspaceStatuses={workspaceStatuses}
           syncTaskStatusFromWorkspaceBoard={syncTaskStatusFromWorkspaceBoard}
+          boardView={boardView}
+          onBoardViewChange={setBoardView}
           onSyncTaskStatusFromWorkspaceBoardChange={setSyncTaskStatusFromWorkspaceBoard}
           onRenameStatus={handleRenameStatus}
           onChangeStatusColor={handleChangeStatusColor}
@@ -741,8 +806,8 @@ export default function WorkspaceKanbanDrawer({
           ref={boardRef}
           className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-3"
           data-workspace-board-selection-surface=""
-          onPointerDownCapture={onCardPointerDownCapture}
-          onPointerDown={handleAreaSelectionPointerDown}
+          onPointerDownCapture={boardView === 'agents' ? undefined : onCardPointerDownCapture}
+          onPointerDown={boardView === 'agents' ? undefined : handleAreaSelectionPointerDown}
         >
           <WorkspaceKanbanAreaSelectionOverlay ref={areaSelectionOverlayRef} />
           <div
@@ -758,27 +823,42 @@ export default function WorkspaceKanbanDrawer({
             ref={laneScrollerRef}
             className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden scrollbar-sleek"
           >
-            <WorkspaceKanbanLaneGrid
-              statuses={workspaceStatuses}
-              worktreesByStatus={worktreesByStatus}
-              repoMap={repoMap}
-              activeWorktreeId={activeWorktreeId}
-              columnWidth={columnWidth}
-              isResizingColumn={isResizingColumn}
-              dragOverStatus={dragOverStatus}
-              canCreateWorktree={canCreateWorktree}
-              selectedWorktreeIds={selectedWorktreeIds}
-              selectedWorktrees={selectedWorktrees}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onActivate={handleWorktreeActivate}
-              onSelectionGesture={updateSelectionForGesture}
-              onContextMenuSelect={selectForContextMenu}
-              onCreateWorktree={createWorktreeForStatus}
-              onColumnResizeStart={onColumnResizeStart}
-              onColumnResizeKeyDown={onColumnResizeKeyDown}
-            />
+            {boardView === 'agents' ? (
+              <WorkspaceAgentsLaneGrid
+                worktrees={agentsBoardWorktrees}
+                repoMap={repoMap}
+                agentRowsByWorktreeId={agentsByWorktreeId}
+                columnWidth={columnWidth}
+                isResizingColumn={isResizingColumn}
+                onActivate={handleAgentActivate}
+                onActivateWorktree={handleAgentWorktreeActivate}
+                onDismiss={handleAgentDismiss}
+                onColumnResizeStart={onColumnResizeStart}
+                onColumnResizeKeyDown={onColumnResizeKeyDown}
+              />
+            ) : (
+              <WorkspaceKanbanLaneGrid
+                statuses={workspaceStatuses}
+                worktreesByStatus={worktreesByStatus}
+                repoMap={repoMap}
+                activeWorktreeId={activeWorktreeId}
+                columnWidth={columnWidth}
+                isResizingColumn={isResizingColumn}
+                dragOverStatus={dragOverStatus}
+                canCreateWorktree={canCreateWorktree}
+                selectedWorktreeIds={selectedWorktreeIds}
+                selectedWorktrees={selectedWorktrees}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onActivate={handleWorktreeActivate}
+                onSelectionGesture={updateSelectionForGesture}
+                onContextMenuSelect={selectForContextMenu}
+                onCreateWorktree={createWorktreeForStatus}
+                onColumnResizeStart={onColumnResizeStart}
+                onColumnResizeKeyDown={onColumnResizeKeyDown}
+              />
+            )}
           </div>
         </div>
       </SheetContent>

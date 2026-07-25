@@ -2,16 +2,19 @@
 // The keyboard chords are resolved live from Orca's keybindings registry (scope
 // 'canvas'), so the list stays in sync when they're rebound in Settings. Pointer
 // gestures (zoom/pan/double-click) have no registry entry and stay static.
+// Chord rows are clickable — clicking them executes the shortcut action.
 
 import React, { useState } from 'react'
-import { Keyboard, X } from 'lucide-react'
+import { Keyboard, Play, X } from 'lucide-react'
 import {
   formatKeybinding,
   getEffectiveKeybindingsForAction,
-  KEYBINDING_DEFINITIONS
+  KEYBINDING_DEFINITIONS,
+  type KeybindingActionId
 } from '../../../../shared/keybindings'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { useAppStore } from '../../store'
+import { executeShortcutAction } from '@/lib/shortcut-action-dispatcher'
 import { translate } from '@/i18n/i18n'
 import { useCanvasHudVisibilityStore } from './canvas-shortcut-hud-store'
 import { getCanvasGestureRows, type CanvasHudId } from './canvas-shortcut-hud-visibility'
@@ -133,18 +136,36 @@ export default function CanvasShortcutsPane(): React.JSX.Element {
       <div className="flex flex-col gap-1.5 px-2.5 py-2">
         {rows.map((r) => {
           const Icon = canvasHudIcon(r.id)
+          const isGesture = r.id.startsWith('gesture.')
+
           return (
-            <div key={r.id} className="flex items-center justify-between gap-3">
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => {
+                if (!isGesture) {
+                  executeShortcutAction(r.id as KeybindingActionId)
+                }
+              }}
+              className={
+                isGesture
+                  ? 'flex w-full items-center justify-between gap-3 text-left'
+                  : 'flex w-full items-center justify-between gap-3 rounded-sm text-left transition-colors hover:bg-accent/60 hover:text-accent-foreground cursor-pointer'
+              }
+            >
               <span className="flex min-w-0 items-center gap-1.5">
                 {Icon && <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />}
                 <span className="truncate text-[11px] text-muted-foreground">{r.label}</span>
               </span>
               <span className="flex shrink-0 items-center gap-0.5">
+                {!isGesture && (
+                  <Play className="mr-1 size-2.5 shrink-0 text-muted-foreground/40" />
+                )}
                 {r.keys.map((k) => (
                   <KeyChip key={k}>{k}</KeyChip>
                 ))}
               </span>
-            </div>
+            </button>
           )
         })}
       </div>

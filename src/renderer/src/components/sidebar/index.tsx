@@ -6,6 +6,7 @@ import SidebarHeader from './SidebarHeader'
 import SidebarNav from './SidebarNav'
 import MainSurfaceSidebarEntry from './MainSurfaceSidebarEntry'
 import SetupScriptPromptCard from './SetupScriptPromptCard'
+import { SidebarBrowserDock } from './SidebarBrowserDock'
 import WorktreeList from './WorktreeList'
 import SidebarToolbar from './SidebarToolbar'
 import WorkspaceKanbanDrawer from './WorkspaceKanbanDrawer'
@@ -144,7 +145,7 @@ function Sidebar({
           <>
             {/* Fixed controls */}
             <MainSurfaceSidebarEntry />
-            <SidebarNav />
+            <SidebarNav toggleWorkspaceBoard={toggleWorkspaceBoard} />
             <SidebarHeader onWorkspaceBoardMenuOpenChange={setWorkspaceBoardMenuOpen} />
 
             <WorktreeList
@@ -157,6 +158,8 @@ function Sidebar({
             />
 
             <SetupScriptPromptCard />
+
+            <SidebarBrowserDock />
 
             {/* Fixed bottom toolbar */}
             <SidebarToolbar

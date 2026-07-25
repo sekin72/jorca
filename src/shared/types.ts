@@ -3389,6 +3389,10 @@ export type PersistedUIState = {
    *  'terminal'). */
   activeView: TopLevelView
   sidebarWidth: number
+  /** Height (px) of the always-visible browser dock pinned above the sidebar
+   *  toolbar, and whether it is shown. Clamped on hydration. */
+  sidebarBrowserDockHeight: number
+  sidebarBrowserDockVisible: boolean
   rightSidebarOpen: boolean
   rightSidebarTab: RightSidebarTab
   rightSidebarExplorerView: RightSidebarExplorerView

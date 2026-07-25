@@ -59,6 +59,7 @@ import { registerAgentTrustHandlers } from './agent-trust'
 import { registerClaudeAccountHandlers } from './claude-accounts'
 import { registerMiniMaxCredentialsHandlers } from './minimax-credentials'
 import { registerGrokAccountHandlers } from './grok-accounts'
+import { registerComboLiveWsHandlers } from './combo-live-ws'
 import { registerUpdaterHandlers } from '../window/attach-main-window-services'
 import {
   registerClipboardHandlers,
@@ -131,6 +132,7 @@ export function registerCoreHandlers(
   registerClaudeAccountHandlers(claudeAccounts)
   registerMiniMaxCredentialsHandlers(rateLimits)
   registerGrokAccountHandlers()
+  registerComboLiveWsHandlers()
   registerRateLimitHandlers(rateLimits)
   registerGitHubHandlers(store, stats)
   registerGitLabHandlers(store)

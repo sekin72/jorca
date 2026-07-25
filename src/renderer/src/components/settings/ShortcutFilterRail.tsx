@@ -18,6 +18,10 @@ export type ShortcutRowModel = {
   modified: boolean
   warnings: readonly string[]
   terminalStatus?: ShortcutTerminalStatus
+  // Child shortcuts (only present for parent shortcuts with isParent: true)
+  children?: ShortcutRowModel[]
+  // Whether this parent shortcut is expanded to show children
+  isExpanded?: boolean
 }
 
 export type ShortcutRowsByGroup = {
@@ -60,6 +64,22 @@ export function getShortcutSearchEntry(row: ShortcutRowModel): SettingsSearchEnt
   }
 }
 
+function matchesShortcutSearchEntry(
+  row: ShortcutRowModel,
+  searchQuery: string
+): boolean {
+  if (matchesSettingsSearch(searchQuery, getShortcutSearchEntry(row))) {
+    return true
+  }
+  // Also match against child items
+  if (row.children?.length) {
+    return row.children.some((child) =>
+      matchesSettingsSearch(searchQuery, getShortcutSearchEntry(child))
+    )
+  }
+  return false
+}
+
 // Why: a sidebar query can select this pane by title alone while matching zero
 // rows; that would blank the list, so zero-row queries keep every row visible.
 export function buildShortcutGlobalSearchMatcher(
@@ -67,18 +87,18 @@ export function buildShortcutGlobalSearchMatcher(
   searchQuery: string
 ): (row: ShortcutRowModel) => boolean {
   const rowMatches = (row: ShortcutRowModel): boolean =>
-    matchesSettingsSearch(searchQuery, getShortcutSearchEntry(row))
+    matchesShortcutSearchEntry(row, searchQuery)
   return rows.some(rowMatches) ? rowMatches : () => true
 }
 
 export function matchesShortcutFilter(row: ShortcutRowModel, filter: ShortcutFilter): boolean {
   switch (filter) {
     case 'modified':
-      return row.modified
+      return row.modified || (row.children?.some((child) => child.modified) ?? false)
     case 'unassigned':
-      return row.effective.length === 0
+      return row.effective.length === 0 && (!row.children || row.children.every((child) => child.effective.length === 0))
     case 'conflicts':
-      return row.warnings.length > 0
+      return row.warnings.length > 0 || (row.children?.some((child) => child.warnings.length > 0) ?? false)
     case 'all':
       return true
   }
@@ -102,7 +122,22 @@ export function matchesShortcutLocalSearch(
     ...row.item.searchKeywords,
     formatKeybindingList(row.effective, platform)
   ]
-  return searchableText.some((value) => value.toLowerCase().includes(query))
+  if (searchableText.some((value) => value.toLowerCase().includes(query))) {
+    return true
+  }
+  // Also search child items
+  if (row.children?.length) {
+    return row.children.some((child) => {
+      const childText = [
+        child.item.title,
+        child.item.id,
+        ...child.item.searchKeywords,
+        formatKeybindingList(child.effective, platform)
+      ]
+      return childText.some((value) => value.toLowerCase().includes(query))
+    })
+  }
+  return false
 }
 
 export function ShortcutFilterRail({

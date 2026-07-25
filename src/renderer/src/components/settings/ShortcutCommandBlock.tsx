@@ -1,5 +1,5 @@
-import React from 'react'
-import { Ban, Plus, RotateCcw, Terminal } from 'lucide-react'
+import React, { useCallback } from 'react'
+import { Ban, Play, Plus, RotateCcw, Terminal } from 'lucide-react'
 import {
   isDigitIndexActionId,
   type KeybindingActionId,
@@ -42,6 +42,12 @@ type ShortcutCommandBlockProps = {
   onResetAction: (actionId: KeybindingActionId) => void
   onDisableAction: (actionId: KeybindingActionId) => void
   onEnableAction: (actionId: KeybindingActionId) => void
+  // If true, this row is a parent container for child shortcuts.
+  // Parents are collapsible and not individually clickable.
+  isParent?: boolean
+  // Optional callback for click-to-execute. When set, the title becomes a
+  // clickable element that calls this function.
+  onExecute?: () => void
 }
 
 export function ShortcutCommandBlock({
@@ -63,7 +69,9 @@ export function ShortcutCommandBlock({
   onRemoveBindingAt,
   onResetAction,
   onDisableAction,
-  onEnableAction
+  onEnableAction,
+  isParent,
+  onExecute
 }: ShortcutCommandBlockProps): React.JSX.Element {
   const hasBinding = effective.length > 0
   const isMulti = effective.length >= 2
@@ -73,6 +81,13 @@ export function ShortcutCommandBlock({
   const showAppendSlot = recordingBindingIndex !== null && recordingBindingIndex >= effective.length
   const isDigitIndex = isDigitIndexActionId(item.id)
   const canEnable = isDisabled && previousBindings.length > 0
+  const isExecutable = !isParent && onExecute !== undefined
+
+  const handleTitleClick = useCallback((): void => {
+    if (isExecutable && onExecute) {
+      onExecute()
+    }
+  }, [isExecutable, onExecute])
 
   const doubleTapHint = platform === 'darwin' ? '⇧⇧' : 'Shift Shift'
   const recordingMessage = translate(
@@ -127,14 +142,45 @@ export function ShortcutCommandBlock({
             const Icon = canvasHudIcon(item.id)
             return Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground" /> : null
           })()}
-          <span
-            className={cn(
-              'truncate text-sm',
-              isDisabled ? 'text-muted-foreground' : 'text-foreground'
-            )}
-          >
-            {item.title}
-          </span>
+          {isExecutable ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-sm px-1 -ml-1 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                    isDisabled
+                      ? 'text-muted-foreground'
+                      : 'text-foreground hover:bg-accent/60 hover:text-accent-foreground cursor-pointer'
+                  )}
+                  onClick={handleTitleClick}
+                  aria-label={translate(
+                    'auto.components.settings.ShortcutCommandBlock.6e7f5a1b2c',
+                    'Execute {{value0}}',
+                    { value0: item.title }
+                  )}
+                >
+                  {item.title}
+                  <Play className="ml-0.5 size-3 shrink-0 text-muted-foreground/60" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                {translate(
+                  'auto.components.settings.ShortcutCommandBlock.7a8b9c0d1e',
+                  'Click to execute shortcut'
+                )}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span
+              className={cn(
+                'text-sm',
+                isDisabled ? 'text-muted-foreground' : 'text-foreground'
+              )}
+            >
+              {item.title}
+            </span>
+          )}
           {modified ? (
             <Badge variant="outline" className="shrink-0 text-[11px]">
               {translate('auto.components.settings.ShortcutCommandBlock.287e07ddde', 'Modified')}

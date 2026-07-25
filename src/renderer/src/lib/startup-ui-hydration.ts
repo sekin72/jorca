@@ -36,6 +36,8 @@ export function getStartupErrorFallbackUI(uiHydrated: boolean): PersistedUIState
     lastActiveWorktreeId: null,
     activeView: 'terminal',
     sidebarWidth: 280,
+    sidebarBrowserDockHeight: 260,
+    sidebarBrowserDockVisible: true,
     rightSidebarOpen: true,
     rightSidebarTab: 'explorer',
     rightSidebarExplorerView: 'files',

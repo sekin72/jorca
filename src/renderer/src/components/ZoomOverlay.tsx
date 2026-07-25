@@ -48,7 +48,13 @@ export function ZoomOverlay(): React.JSX.Element | null {
   }
 
   const title =
-    detail.type === 'ui' ? 'UI Zoom' : detail.type === 'editor' ? 'Editor Zoom' : 'Terminal Zoom'
+    detail.type === 'ui'
+      ? 'UI Zoom'
+      : detail.type === 'editor'
+        ? 'Editor Zoom'
+        : detail.type === 'canvas'
+          ? 'Canvas Zoom'
+          : 'Terminal Zoom'
 
   return (
     <div

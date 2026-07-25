@@ -4448,6 +4448,27 @@ const api = {
     }
   },
 
+  comboLiveWs: {
+    connect: (): Promise<{ isConnected: boolean }> => ipcRenderer.invoke('combo-live:connect'),
+    disconnect: (): Promise<void> => ipcRenderer.invoke('combo-live:disconnect'),
+    reconnect: (): Promise<{ isConnected: boolean }> => ipcRenderer.invoke('combo-live:reconnect'),
+    // Subscribe to the combo-live:event channel and return an unsubscribe function.
+    onEvent: (
+      callback: (data: unknown) => void
+    ): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: unknown): void => {
+        callback(data)
+      }
+      // Kick the main process to start the WS connection on first subscription.
+      void ipcRenderer.invoke('combo-live:connect')
+      ipcRenderer.on('combo-live:event', listener)
+      return () => {
+        ipcRenderer.removeListener('combo-live:event', listener)
+        void ipcRenderer.invoke('combo-live:disconnect')
+      }
+    }
+  },
+
   speech: {
     getCatalog: (): Promise<SpeechModelManifest[]> => ipcRenderer.invoke('speech:getCatalog'),
     getModelStates: (): Promise<SpeechModelState[]> => ipcRenderer.invoke('speech:getModelStates'),

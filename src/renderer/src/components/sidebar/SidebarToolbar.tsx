@@ -1,5 +1,5 @@
 import React from 'react'
-import { Kanban } from 'lucide-react'
+import { Kanban, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { ScrollToCurrentWorkspaceToolbarButton } from './ScrollToCurrentWorkspaceToolbarButton'
@@ -26,6 +26,8 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
   const [workspaceBoardMovedHintOpen, setWorkspaceBoardMovedHintOpen] = React.useState(false)
   const movedHintEligibleRef = React.useRef<boolean | null>(null)
   const persistedUIReady = useAppStore((state) => state.persistedUIReady)
+  const dockVisible = useAppStore((state) => state.sidebarBrowserDockVisible)
+  const setDockVisible = useAppStore((state) => state.setSidebarBrowserDockVisible)
   const hasUsedWorkspaceBoard = useAppStore((state) =>
     hasFeatureInteraction(state.featureInteractions, 'workspace-board')
   )
@@ -112,6 +114,25 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
                     )}
             </TooltipContent>
           </Tooltip>
+          {!dockVisible && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  type="button"
+                  aria-label="Show browser dock"
+                  onClick={() => setDockVisible(true)}
+                  className="text-muted-foreground"
+                >
+                  <Eye className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                Show browser dock
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
     </div>

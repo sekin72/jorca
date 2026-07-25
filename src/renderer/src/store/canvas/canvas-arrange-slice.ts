@@ -202,7 +202,7 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
       const settings = useAppStore.getState().settings
       const defaultW = settings?.canvasDefaultNodeWidth ?? 720
       const defaultH = settings?.canvasDefaultNodeHeight ?? 480
-      const { gap } = readLayoutGeometry()
+      const { padTop, padLeft, padRight, padBottom, gap } = readLayoutGeometry()
 
       const selected = selectedNodes(get())
       if (selected.length < 2) {
@@ -210,27 +210,33 @@ export function createArrangeSlice(set: CanvasSet, get: CanvasGet): ArrangeActio
       }
       get().pushHistory()
 
-      // Set every node to the default size first.
       const state = get()
       const nodes = { ...state.nodes }
-      for (const node of Object.values(state.nodes)) {
-        nodes[node.id] = { ...nodes[node.id], size: { width: defaultW, height: defaultH } }
-      }
+      const containerW = state.containerSize.width
+      const containerH = state.containerSize.height
 
-      // Stack selected nodes edge-to-edge along the chosen axis, anchored at top-left.
+      // Compute expanded dimensions: perpendicular to the stack axis fills the available space.
+      const expandedW =
+        Math.max(MIN_NODE_SIZE.width, containerW - padLeft - padRight)
+      const expandedH =
+        Math.max(MIN_NODE_SIZE.height, containerH - padTop - padBottom)
+
+      // Stack selected nodes along the chosen axis, anchored at top-left.
       const row = axis === 'row'
       const sorted = [...selected].sort((a, b) =>
         row ? a.origin.x - b.origin.x : a.origin.y - b.origin.y
       )
-      const startX = Math.min(...selected.map((n) => n.origin.x))
-      const startY = Math.min(...selected.map((n) => n.origin.y))
-      let cursor = row ? startX : startY
+      let cursor = row ? padLeft : padTop
       for (const node of sorted) {
         nodes[node.id] = {
           ...nodes[node.id],
           origin: {
-            x: row ? cursor : startX,
-            y: row ? startY : cursor
+            x: row ? cursor : padLeft,
+            y: row ? padTop : cursor
+          },
+          size: {
+            width: row ? defaultW : expandedW,
+            height: row ? expandedH : defaultH
           }
         }
         cursor += (row ? defaultW : defaultH) + gap

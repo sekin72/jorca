@@ -495,6 +495,8 @@ export function getDefaultUIState(): PersistedUIState {
     lastActiveWorktreeId: null,
     activeView: 'terminal',
     sidebarWidth: 280,
+    sidebarBrowserDockHeight: 260,
+    sidebarBrowserDockVisible: true,
     rightSidebarOpen: true,
     rightSidebarTab: 'explorer',
     rightSidebarExplorerView: 'files',

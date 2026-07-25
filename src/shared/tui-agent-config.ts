@@ -178,7 +178,7 @@ export const TUI_AGENT_CONFIG: Record<TuiAgent, TuiAgentConfig> = {
   },
   antigravity: {
     detectCmd: 'agy',
-    launchCmd: 'agy',
+    launchCmd: 'agy --dangerously-skip-permissions',
     expectedProcess: 'agy',
     promptInjectionMode: 'flag-prompt-interactive'
   },

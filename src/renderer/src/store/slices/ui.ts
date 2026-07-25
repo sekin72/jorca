@@ -291,6 +291,8 @@ function normalizeHydratedVisibleWorkspaceHostIds(ui: PersistedUIState): Visible
 
 const MIN_SIDEBAR_WIDTH = 220
 const MAX_LEFT_SIDEBAR_WIDTH = 500
+export const MIN_SIDEBAR_BROWSER_DOCK_HEIGHT = 140
+export const MAX_SIDEBAR_BROWSER_DOCK_HEIGHT = 600
 // Why: the right sidebar drag-resize is window-relative (see right-sidebar
 // component), so persisted widths can legitimately be well above the old 500px
 // cap on wide displays. Use a large hard ceiling purely as a safety net for
@@ -437,6 +439,16 @@ function sanitizePersistedSidebarWidth(width: unknown, fallback: number, maxWidt
     return fallback
   }
   return Math.min(maxWidth, Math.max(MIN_SIDEBAR_WIDTH, width))
+}
+
+function sanitizePersistedSidebarBrowserDockHeight(height: unknown, fallback: number): number {
+  if (typeof height !== 'number' || !Number.isFinite(height)) {
+    return fallback
+  }
+  return Math.min(
+    MAX_SIDEBAR_BROWSER_DOCK_HEIGHT,
+    Math.max(MIN_SIDEBAR_BROWSER_DOCK_HEIGHT, height)
+  )
 }
 
 // Why: persisted JSON can be tampered with or carry legacy/corrupt shapes.
@@ -598,6 +610,10 @@ function sanitizeTaskResumeState(value: unknown): TaskResumeState | undefined {
 export type UISlice = {
   sidebarOpen: boolean
   sidebarWidth: number
+  /** Persisted height (px) and visibility of the always-on browser dock pinned
+   *  above the sidebar toolbar. */
+  sidebarBrowserDockHeight: number
+  sidebarBrowserDockVisible: boolean
   /** Whether the canvas Overview (all-worktrees tiles) is showing in place of the
    *  active worktree's canvas. Session-only — not persisted. See Phase 2. */
   canvasOverviewActive: boolean
@@ -622,6 +638,8 @@ export type UISlice = {
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   setSidebarWidth: (width: number) => void
+  setSidebarBrowserDockHeight: (height: number) => void
+  setSidebarBrowserDockVisible: (visible: boolean) => void
   agentSendPopoverTargetMode: AgentSendPopoverTargetMode | null
   openAgentSendPopoverTargetMode: (args: OpenAgentSendPopoverTargetModeArgs) => void
   closeAgentSendPopoverTargetMode: (id?: string, instanceId?: string) => void
@@ -1034,6 +1052,8 @@ export type UISlice = {
 export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get) => ({
   sidebarOpen: true,
   sidebarWidth: 280,
+  sidebarBrowserDockHeight: 260,
+  sidebarBrowserDockVisible: true,
   canvasOverviewActive: false,
   setCanvasOverviewActive: (active) => set({ canvasOverviewActive: active }),
   mainSurfaceActive: false,
@@ -1047,6 +1067,8 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setSidebarWidth: (width) => set({ sidebarWidth: width }),
+  setSidebarBrowserDockHeight: (height) => set({ sidebarBrowserDockHeight: height }),
+  setSidebarBrowserDockVisible: (visible) => set({ sidebarBrowserDockVisible: visible }),
   agentSendPopoverTargetMode: null,
   openAgentSendPopoverTargetMode: (args) => {
     const targets = deriveRunningAgentSendTargets(get(), args.worktreeId)
@@ -2475,6 +2497,14 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
           s.sidebarWidth,
           MAX_LEFT_SIDEBAR_WIDTH
         ),
+        sidebarBrowserDockHeight: sanitizePersistedSidebarBrowserDockHeight(
+          ui.sidebarBrowserDockHeight,
+          s.sidebarBrowserDockHeight
+        ),
+        sidebarBrowserDockVisible:
+          typeof ui.sidebarBrowserDockVisible !== 'boolean'
+            ? s.sidebarBrowserDockVisible
+            : ui.sidebarBrowserDockVisible,
         rightSidebarWidth: sanitizePersistedSidebarWidth(
           ui.rightSidebarWidth,
           s.rightSidebarWidth,

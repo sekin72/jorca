@@ -1,5 +1,5 @@
 // Positioned context menu for the canvas — opens at a screen point and offers
-// one-click spawn of agent terminals (Claude/opencode/Gemini) or a plain
+// one-click spawn of agent terminals (Claude/opencode/Antigravity) or a plain
 // terminal, each dropped as a canvas node at the right-click's canvas point.
 // Radix's ContextMenu is trigger-anchored and can't open at an arbitrary point
 // or conditionally suppress on node targets, so this is a minimal state-driven
@@ -55,7 +55,7 @@ export function CanvasContextMenu({
   const items: MenuItem[] = [
     { kind: 'item', label: 'Claude Code', onSelect: () => launch('claude') },
     { kind: 'item', label: 'opencode', onSelect: () => launch('opencode') },
-    { kind: 'item', label: 'Gemini CLI', onSelect: () => launch('gemini') },
+    { kind: 'item', label: 'Antigravity', onSelect: () => launch('antigravity') },
     { kind: 'separator' },
     {
       kind: 'item',

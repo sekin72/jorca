@@ -5759,6 +5759,42 @@ describe('Store', () => {
     })
   })
 
+  // ── sidebar browser dock ─────────────────────────────────────────────
+
+  it('updateUI persists and restores sidebarBrowserDockHeight', async () => {
+    const store = await createStore()
+    store.updateUI({ sidebarBrowserDockHeight: 400 })
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getUI().sidebarBrowserDockHeight).toBe(400)
+  })
+
+  it('updateUI persists and restores sidebarBrowserDockVisible', async () => {
+    const store = await createStore()
+    store.updateUI({ sidebarBrowserDockVisible: false })
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getUI().sidebarBrowserDockVisible).toBe(false)
+  })
+
+  it('sanitizes out-of-bounds sidebarBrowserDockHeight on update', async () => {
+    const store = await createStore()
+    // Below MIN (140) → normalizeSidebarBrowserDockHeight clamps to MIN
+    store.updateUI({ sidebarBrowserDockHeight: 50 })
+    store.flush()
+    const reloaded = await createStore()
+    expect(reloaded.getUI().sidebarBrowserDockHeight).toBe(140)
+  })
+
+  it('sanitizes non-boolean sidebarBrowserDockVisible on read', async () => {
+    const store = await createStore()
+    store.updateUI({ sidebarBrowserDockVisible: 'yes' as never })
+    store.flush()
+    const reloaded = await createStore()
+    // Non-boolean → default true
+    expect(reloaded.getUI().sidebarBrowserDockVisible).toBe(true)
+  })
+
   it('normalizes malformed main-owned feature telemetry bucket markers on read', async () => {
     writeDataFile({
       schemaVersion: 1,

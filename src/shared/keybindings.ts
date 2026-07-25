@@ -122,6 +122,9 @@ export type KeybindingActionId =
   | 'canvas.tidySelection'
   | 'canvas.stackSelection'
   | 'canvas.closeNode'
+  | 'canvas.arrangeGroup'
+  | 'canvas.arrangeGrid'
+  | 'canvas.arrangeColumns'
 
 export type KeybindingOverrides = Partial<Record<KeybindingActionId, string[]>>
 
@@ -159,6 +162,12 @@ export type KeybindingDefinition = {
   allowBareKeybindings?: boolean
   allowShiftOnlyKeybindings?: boolean
   conflictGroup?: string
+  // If set, this shortcut is a child of the specified parent shortcut.
+  // Child shortcuts are rendered indented under their parent.
+  parentId?: KeybindingActionId
+  // If true, this shortcut acts as a parent container for child shortcuts.
+  // The parent itself has no binding but can be expanded to show children.
+  isParent?: boolean
 }
 
 export type ModifierToken = 'Mod' | 'Cmd' | 'Ctrl' | 'Alt' | 'Shift'
@@ -239,7 +248,7 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     scope: 'global',
     searchKeywords: ['shortcut', 'global', 'worktree', 'switch', 'jump'],
     defaultBindings: {
-      darwin: ['Mod+J'],
+      darwin: ['Mod+J', 'Mod+O'],
       linux: ['Mod+Shift+J'],
       win32: ['Mod+Shift+J']
     }
@@ -1114,6 +1123,35 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     scope: 'canvas',
     searchKeywords: ['shortcut', 'canvas', 'close', 'return', 'window', 'node'],
     defaultBindings: platformBindings(['Mod+W'])
+  },
+  // Why: parent container for arrange-related canvas shortcuts. The parent
+  // itself has no binding — it's a collapsible heading for its children.
+  {
+    id: 'canvas.arrangeGroup',
+    title: 'Arrange',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'arrange', 'layout', 'grid', 'columns', 'group'],
+    defaultBindings: platformBindings([]),
+    isParent: true
+  },
+  {
+    id: 'canvas.arrangeGrid',
+    title: 'Arrange as grid',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'arrange', 'grid', 'layout'],
+    defaultBindings: platformBindings(['Mod+Shift+Period']),
+    parentId: 'canvas.arrangeGroup'
+  },
+  {
+    id: 'canvas.arrangeColumns',
+    title: 'Arrange as columns',
+    group: 'Canvas',
+    scope: 'canvas',
+    searchKeywords: ['shortcut', 'canvas', 'arrange', 'columns', 'layout'],
+    defaultBindings: platformBindings(['Mod+Shift+Comma']),
+    parentId: 'canvas.arrangeGroup'
   },
   {
     id: 'terminal.switchInputSource',

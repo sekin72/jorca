@@ -36,6 +36,8 @@ function renderHeader(onClose: () => void): React.ReactElement {
     selectedCount: 0,
     workspaceStatuses: statuses,
     syncTaskStatusFromWorkspaceBoard: false,
+    boardView: 'tasks',
+    onBoardViewChange: vi.fn(),
     onSyncTaskStatusFromWorkspaceBoardChange: vi.fn(),
     onRenameStatus: vi.fn(),
     onChangeStatusColor: vi.fn(),

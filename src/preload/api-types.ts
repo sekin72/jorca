@@ -441,6 +441,7 @@ import type {
 } from '../shared/native-chat-types'
 import type { TelemetryConsentState } from '../shared/telemetry-consent-types'
 import type { AgentKind, LaunchSource, RequestKind } from '../shared/telemetry-events'
+import type { ComboLiveWsMessage } from '../shared/combo-live-types'
 import type { AppStarSource } from '../shared/gh-star-source'
 import type {
   RemoteWorkspaceChangedEvent,
@@ -3343,6 +3344,13 @@ export type PreloadApi = {
     onReady: (callback: (data: SpeechLifecycleEvent) => void) => () => void
     onStopped: (callback: (data: SpeechLifecycleEvent) => void) => () => void
     onError: (callback: (data: SpeechErrorEvent) => void) => () => void
+  }
+  comboLiveWs: {
+    connect: () => Promise<{ isConnected: boolean }>
+    disconnect: () => Promise<void>
+    reconnect: () => Promise<{ isConnected: boolean }>
+    // Stream of connection-state and combo events from the main-process WS client.
+    onEvent: (callback: (data: ComboLiveWsMessage) => void) => () => void
   }
 }
 

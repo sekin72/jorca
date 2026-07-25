@@ -768,6 +768,14 @@
   height: 6px;
 }
 
+/* ── Canvas node unselected overlay ──────────────────── */
+/* Why: the parent's brightness/saturate filter greys the whole window.
+   The header stays mostly legible; body content (terminals, editors) dims further
+   which is intentional — it signals "this isn't the active window." */
+[data-canvas-node][data-active='false'] .flex.h-8.shrink-0:first-child {
+  opacity: 0.75;
+}
+
 /* ── Titlebar ────────────────────────────────────────── */
 
 /* Why: Radix portals (dropdowns, popovers, dialogs, sheets) render at the

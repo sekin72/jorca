@@ -12,6 +12,7 @@ import {
 import {
   EMPTY_DISABLED_TUI_AGENTS,
   disabledAgentTabActionIds,
+  getChildDefinitions,
   groupDefinitions
 } from './shortcut-groups'
 import { useAppStore } from '../../store'
@@ -31,6 +32,7 @@ import {
   normalizeShortcutLocalSearchQuery,
   ShortcutFilterRail,
   type ShortcutFilter,
+  type ShortcutRowModel,
   type ShortcutRowsByGroup
 } from './ShortcutFilterRail'
 import { ShortcutRowsList } from './ShortcutRowsList'
@@ -48,8 +50,7 @@ import {
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
 
-const isMac = navigator.userAgent.includes('Mac')
-const platform: NodeJS.Platform = isMac
+const platform: NodeJS.Platform = navigator.userAgent.includes('Mac')
   ? 'darwin'
   : navigator.userAgent.includes('Windows')
     ? 'win32'
@@ -82,6 +83,7 @@ export function ShortcutsPane(): React.JSX.Element {
   )
   const [shortcutQuery, setShortcutQuery] = useState('')
   const [shortcutFilter, setShortcutFilter] = useState<ShortcutFilter>('all')
+  const [expandedParentIds, setExpandedParentIds] = useState<Partial<Record<KeybindingActionId, boolean>>>({})
 
   // Why: tell the main process to suspend global shortcut dispatch while any row
   // is recording, so the captured chord lands in the editor instead of firing.
@@ -121,21 +123,30 @@ export function ShortcutsPane(): React.JSX.Element {
           const effective = getEffectiveKeybindingsForAction(item.id, platform, keybindings)
           const modified = hasOwnBindingOverride(keybindings, item.id)
           const warnings = conflictByAction.get(item.id) ?? []
-          return {
+          const row: ShortcutRowModel = {
             item,
             groupTitle: group.title,
             effective,
             modified,
             warnings,
-            terminalStatus: getShortcutTerminalStatus(
-              item,
-              terminalShortcutPolicy,
-              effective.length > 0
-            )
+            terminalStatus: getShortcutTerminalStatus(item, terminalShortcutPolicy, effective.length > 0)
           }
+          if (item.isParent) {
+            const childDefs = getChildDefinitions(item.id, disabledTuiAgents)
+            row.children = childDefs.map((child) => ({
+              item: child,
+              groupTitle: group.title,
+              effective: getEffectiveKeybindingsForAction(child.id, platform, keybindings),
+              modified: hasOwnBindingOverride(keybindings, child.id),
+              warnings: conflictByAction.get(child.id) ?? [],
+              terminalStatus: getShortcutTerminalStatus(child, terminalShortcutPolicy, getEffectiveKeybindingsForAction(child.id, platform, keybindings).length > 0)
+            }))
+            row.isExpanded = expandedParentIds[item.id] ?? false
+          }
+          return row
         })
       })),
-    [conflictByAction, groups, keybindings, terminalShortcutPolicy]
+    [conflictByAction, disabledTuiAgents, expandedParentIds, groups, keybindings, terminalShortcutPolicy]
   )
   const shortcutSearchQuery = normalizeShortcutLocalSearchQuery(shortcutQuery)
   const shortcutRows = shortcutGroups.flatMap((group) => group.rows)
@@ -290,12 +301,10 @@ export function ShortcutsPane(): React.JSX.Element {
     setRecordingActionId((current) => clearRecordingActionForShortcutMutation(current, actionId))
   }
 
-  const showPolicy = matchesSettingsSearch(searchQuery, getTerminalShortcutPolicySearchEntry())
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
       <section className="flex min-h-0 flex-1 flex-col space-y-3">
-        {showPolicy ? (
+        {matchesSettingsSearch(searchQuery, getTerminalShortcutPolicySearchEntry()) ? (
           <ShortcutTerminalPolicyControl
             terminalShortcutPolicy={terminalShortcutPolicy}
             keywords={getTerminalShortcutPolicySearchEntry().keywords}
@@ -416,6 +425,8 @@ export function ShortcutsPane(): React.JSX.Element {
                 void saveBindings(actionId, remembered)
               }
             }}
+            expandedParentIds={expandedParentIds}
+            onToggleExpand={(id) => setExpandedParentIds((p) => ({ ...p, [id]: !p[id] }))}
           />
         </div>
       </section>

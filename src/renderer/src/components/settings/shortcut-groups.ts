@@ -24,6 +24,7 @@ export function groupDefinitions(disabledTuiAgents: readonly TuiAgent[]): Shortc
   // Why: per-agent launch rows only make sense for agents the user keeps
   // enabled in Settings → Agents; hiding disabled ones keeps the Agents group
   // scoped to what the chord could actually launch.
+  // Also filter out child shortcuts (they're rendered under their parents).
   const hiddenAgentActionIds = new Set<KeybindingActionId>(
     disabledAgentTabActionIds(disabledTuiAgents)
   )
@@ -32,7 +33,32 @@ export function groupDefinitions(disabledTuiAgents: readonly TuiAgent[]): Shortc
     if (hiddenAgentActionIds.has(definition.id)) {
       continue
     }
+    // Skip child shortcuts - they're rendered under their parent
+    if (definition.parentId) {
+      continue
+    }
     groups.set(definition.group, [...(groups.get(definition.group) ?? []), definition])
   }
   return Array.from(groups.entries()).map(([title, items]) => ({ title, items }))
+}
+
+// Helper to get children for a parent shortcut
+export function getChildDefinitions(
+  parentId: KeybindingActionId,
+  disabledTuiAgents: readonly TuiAgent[]
+): KeybindingDefinition[] {
+  const hiddenAgentActionIds = new Set<KeybindingActionId>(
+    disabledAgentTabActionIds(disabledTuiAgents)
+  )
+
+  const children: KeybindingDefinition[] = []
+  for (const definition of KEYBINDING_DEFINITIONS) {
+    if (hiddenAgentActionIds.has(definition.id)) {
+      continue
+    }
+    if (definition.parentId === parentId) {
+      children.push(definition)
+    }
+  }
+  return children
 }

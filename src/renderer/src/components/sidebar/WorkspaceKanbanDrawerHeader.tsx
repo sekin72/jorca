@@ -2,15 +2,20 @@ import React from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { WorkspaceStatusDefinition } from '../../../../shared/types'
 import SidebarFilter from './SidebarFilter'
 import WorkspaceKanbanSettingsMenu from './WorkspaceKanbanSettingsMenu'
 import { translate } from '@/i18n/i18n'
 
+export type BoardView = 'tasks' | 'agents'
+
 type WorkspaceKanbanDrawerHeaderProps = {
   selectedCount: number
   workspaceStatuses: readonly WorkspaceStatusDefinition[]
   syncTaskStatusFromWorkspaceBoard: boolean
+  boardView: BoardView
+  onBoardViewChange: (view: BoardView) => void
   onSyncTaskStatusFromWorkspaceBoardChange: (enabled: boolean) => void
   onRenameStatus: (statusId: string, label: string) => void
   onChangeStatusColor: (statusId: string, color: string) => void
@@ -26,6 +31,8 @@ export default function WorkspaceKanbanDrawerHeader({
   selectedCount,
   workspaceStatuses,
   syncTaskStatusFromWorkspaceBoard,
+  boardView,
+  onBoardViewChange,
   onSyncTaskStatusFromWorkspaceBoardChange,
   onRenameStatus,
   onChangeStatusColor,
@@ -39,13 +46,36 @@ export default function WorkspaceKanbanDrawerHeader({
   return (
     <>
       <SheetHeader className="border-b border-worktree-sidebar-border px-4 py-3 pr-32">
-        <SheetTitle className="flex items-center gap-2 text-sm">
+        <SheetTitle className="flex flex-col gap-1.5 text-sm">
           <span>
             {translate(
               'auto.components.sidebar.WorkspaceKanbanDrawerHeader.c6a77ab0f4',
               'Workspace board'
             )}
           </span>
+          <ToggleGroup
+            type="single"
+            value={boardView}
+            onValueChange={(v) => {
+              if (v) { onBoardViewChange(v as BoardView) }
+            }}
+            size="sm"
+            variant="outline"
+            className="h-6"
+          >
+            <ToggleGroupItem value="tasks" className="h-5 px-2 text-[11px]">
+              {translate(
+                'auto.components.sidebar.WorkspaceKanbanDrawerHeader.tasks',
+                'Tasks'
+              )}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="agents" className="h-5 px-2 text-[11px]">
+              {translate(
+                'auto.components.sidebar.WorkspaceKanbanDrawerHeader.agents',
+                'Agents'
+              )}
+            </ToggleGroupItem>
+          </ToggleGroup>
           {selectedCount > 1 ? (
             <span className="rounded-full bg-worktree-sidebar-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {selectedCount}{' '}

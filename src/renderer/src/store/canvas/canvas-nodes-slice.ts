@@ -68,7 +68,10 @@ export function createNodesSlice(set: CanvasSet, get: CanvasGet): NodesActions {
       }
 
       const nodeId = generateId()
-      const origin = findFreePosition(state.nodes, focusedNodeId(state), nodeSize, position)
+      // Pass null anchor so right-click spawns don't inherit cascade offset from
+      // the currently focused node — findFreePosition returns the snapped preferred
+      // point directly and places the new window on top of any overlap.
+      const origin = findFreePosition(state.nodes, null, nodeSize, position)
       const node: CanvasNodeState = {
         id: nodeId,
         panelId,

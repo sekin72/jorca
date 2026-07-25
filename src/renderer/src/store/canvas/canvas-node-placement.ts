@@ -43,7 +43,10 @@ export function findFreePosition(
   const others = Object.values(nodes)
   let base: Point
   if (preferred) {
-    base = { x: snapToGrid(preferred.x), y: snapToGrid(preferred.y) }
+    // Right-click / drag-drop: snap to grid and return immediately.
+    // Nodes may overlap — that's fine; the new window opens on top.
+    const snapped = { x: snapToGrid(preferred.x), y: snapToGrid(preferred.y) }
+    return snapped
   } else if (anchorId && nodes[anchorId]) {
     const a = nodes[anchorId]
     base = { x: a.origin.x + CASCADE_STEP, y: a.origin.y + CASCADE_STEP }

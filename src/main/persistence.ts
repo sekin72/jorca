@@ -896,6 +896,27 @@ function normalizeRightSidebarExplorerView(
   return getDefaultUIState().rightSidebarExplorerView
 }
 
+const SIDEBAR_BROWSER_DOCK_MIN_HEIGHT = 140
+const SIDEBAR_BROWSER_DOCK_MAX_HEIGHT = 600
+
+function normalizeSidebarBrowserDockHeight(
+  height: unknown
+): PersistedState['ui']['sidebarBrowserDockHeight'] {
+  if (typeof height !== 'number' || !Number.isFinite(height)) {
+    return getDefaultUIState().sidebarBrowserDockHeight
+  }
+  return Math.min(SIDEBAR_BROWSER_DOCK_MAX_HEIGHT, Math.max(SIDEBAR_BROWSER_DOCK_MIN_HEIGHT, height))
+}
+
+function normalizeSidebarBrowserDockVisible(
+  visible: unknown
+): PersistedState['ui']['sidebarBrowserDockVisible'] {
+  if (typeof visible !== 'boolean') {
+    return getDefaultUIState().sidebarBrowserDockVisible
+  }
+  return visible
+}
+
 function normalizeNotificationSettings(value: unknown): NotificationSettings {
   const defaults = getDefaultNotificationSettings()
   const candidate =
@@ -5549,6 +5570,18 @@ export class Store {
               this.state.ui?.rightSidebarExplorerView,
               nextRightSidebarTab
             )
+    const nextSidebarBrowserDockHeight =
+      sanitizedUpdates.sidebarBrowserDockHeight !== undefined
+        ? normalizeSidebarBrowserDockHeight(sanitizedUpdates.sidebarBrowserDockHeight)
+        : this.state.ui?.sidebarBrowserDockHeight !== undefined
+          ? normalizeSidebarBrowserDockHeight(this.state.ui.sidebarBrowserDockHeight)
+          : getDefaultUIState().sidebarBrowserDockHeight
+    const nextSidebarBrowserDockVisible =
+      sanitizedUpdates.sidebarBrowserDockVisible !== undefined
+        ? normalizeSidebarBrowserDockVisible(sanitizedUpdates.sidebarBrowserDockVisible)
+        : this.state.ui?.sidebarBrowserDockVisible !== undefined
+          ? normalizeSidebarBrowserDockVisible(this.state.ui.sidebarBrowserDockVisible)
+          : getDefaultUIState().sidebarBrowserDockVisible
     const nextUI = {
       ...currentUI,
       ...durableUpdates,
@@ -5564,6 +5597,8 @@ export class Store {
       activeView: currentUI.activeView,
       rightSidebarTab: nextRightSidebarTab,
       rightSidebarExplorerView: nextRightSidebarExplorerView,
+      sidebarBrowserDockHeight: nextSidebarBrowserDockHeight,
+      sidebarBrowserDockVisible: nextSidebarBrowserDockVisible,
       worktreeCardProperties:
         sanitizedUpdates.worktreeCardProperties !== undefined
           ? normalizeWorktreeCardProperties(sanitizedUpdates.worktreeCardProperties)

@@ -1,4 +1,4 @@
-export type ZoomTargetType = 'ui' | 'editor' | 'terminal'
+export type ZoomTargetType = 'ui' | 'editor' | 'terminal' | 'canvas'
 
 export type ZoomLevelChangedEventDetail = {
   type: ZoomTargetType

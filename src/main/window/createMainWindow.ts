@@ -1033,26 +1033,31 @@ export function createMainWindow(
     // Why: Some keyboard layouts/platforms consume Ctrl/Cmd+Minus before
     // before-input-event fires, but still emit Electron's zoom command. Keep
     // that fallback only while the matching zoom action is still bound.
-    if (zoomDirection !== 'in' && zoomDirection !== 'out') {
+    // Also handle 'reset' for the same reason — Electron may handle Cmd+0
+    // natively before before-input-event can intercept it.
+    const dir = zoomDirection as string
+    if (dir !== 'in' && dir !== 'out' && dir !== 'reset') {
       return
     }
-    if (
-      !nativeZoomCommandMatchesKeybindings(
-        zoomDirection,
-        process.platform,
-        opts?.getKeybindings?.(),
-        {
-          context: terminalInputFocused || floatingTerminalInputFocused ? 'terminal' : 'app',
-          terminalShortcutPolicy: normalizeTerminalShortcutPolicy(
-            store?.getSettings().terminalShortcutPolicy
-          )
-        }
-      )
-    ) {
-      return
+    if (dir !== 'reset') {
+      if (
+        !nativeZoomCommandMatchesKeybindings(
+          dir as 'in' | 'out',
+          process.platform,
+          opts?.getKeybindings?.(),
+          {
+            context: terminalInputFocused || floatingTerminalInputFocused ? 'terminal' : 'app',
+            terminalShortcutPolicy: normalizeTerminalShortcutPolicy(
+              store?.getSettings().terminalShortcutPolicy
+            )
+          }
+        )
+      ) {
+        return
+      }
     }
     event.preventDefault()
-    mainWindow.webContents.send('terminal:zoom', zoomDirection)
+    mainWindow.webContents.send('terminal:zoom', dir)
   })
 
   // Intercept window close so the renderer can show a confirmation dialog

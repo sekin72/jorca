@@ -20,6 +20,7 @@ import CanvasNodeColorPicker from './CanvasNodeColorPicker'
 import { revealOnMain } from '@/lib/main-surface/reveal-on-main'
 import { returnFromMain } from '@/lib/main-surface/return-from-main'
 import { pullToMain } from '@/lib/main-surface/pull-to-main'
+import { getMainCanvasStore } from '../../store/canvas/canvas-store'
 import { worktreeTint } from '@/lib/main-surface/worktree-tint'
 import { sourceProjectLabel } from '@/lib/main-surface/source-worktree-label'
 import { useAppStore } from '../../store'
@@ -148,9 +149,13 @@ function CanvasNode({
   const TOP_HIGHLIGHT = 'inset 0 1px 0 0 rgb(255 255 255 / 0.06)'
   const FOCUS_GLOW = `0 0 0 1px ${ringColor}, 0 0 18px -3px color-mix(in srgb, ${ringColor} 55%, transparent)`
 
+  // Unselected nodes: desaturate and darken so the active window stands out.
+  const desaturatedFilter = active ? undefined : 'brightness(0.65) saturate(0.7)'
+
   return (
     <div
       data-canvas-node={nodeId}
+      data-active={active ? 'true' : 'false'}
       className="absolute flex flex-col overflow-hidden rounded-xl border bg-card transition-[opacity,transform] duration-150"
       style={{
         left: node.origin.x,
@@ -160,6 +165,7 @@ function CanvasNode({
         zIndex: node.zOrder,
         opacity: exiting ? 0 : 1,
         transform: entering || exiting ? 'scale(0.98)' : 'scale(1)',
+        filter: desaturatedFilter,
         borderColor: active ? ringColor : 'var(--border)',
         boxShadow: active
           ? `${FOCUS_GLOW}, ${TOP_HIGHLIGHT}, ${FLOAT_SHADOW}`
@@ -207,6 +213,22 @@ function CanvasNode({
               onClick={() => pullToMain(surfaceId!, nodeId)}
             >
               <SendToBack className="h-3 w-3" />
+            </ControlButton>
+          )}
+          {node.borrowedByMain && (
+            <ControlButton
+              label={translate(
+                'auto.components.canvas.CanvasNode.returnFromMain',
+                'Return from main'
+              )}
+              onClick={() => {
+                const mainNodeId = getMainCanvasStore().getState().nodeForPanel(node.panelId)
+                if (mainNodeId) {
+                  returnFromMain(mainNodeId)
+                }
+              }}
+            >
+              <CornerUpLeft className="h-3 w-3" />
             </ControlButton>
           )}
           {node.sourceWorktreeId != null && (
