@@ -161,6 +161,7 @@ const persistedOpenFileSchema = z.object({
   language: z.string(),
   isPreview: z.boolean().optional(),
   runtimeEnvironmentId: z.string().nullable().optional(),
+  externalSshTargetId: z.string().trim().min(1).optional(),
   dirtyDraftContent: z.string().optional(),
   lastKnownDiskSignature: z.string().optional(),
   readOnly: z.boolean().optional(),
@@ -325,7 +326,22 @@ export const workspaceSessionStateSchema: z.ZodType<WorkspaceSessionState> = z.o
   // map from failing the whole-session parse (which would reset every terminal /
   // editor / browser to defaults) — the same blast-radius policy as
   // lastVisitedAtByWorktreeId above.
-  canvasByWorktree: z.record(z.string(), persistedWorktreeCanvasSchema).optional().catch(undefined)
+  canvasByWorktree: z.record(z.string(), persistedWorktreeCanvasSchema).optional().catch(undefined),
+  terminalPtyIncarnationsByPaneKey: z.record(z.string(), z.string().min(1).max(128)).optional(),
+  terminalTopologyRevisionByRepoId: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  terminalSurfaceTombstonesByPaneKey: z
+    .record(
+      z.string(),
+      z.object({
+        worktreeId: z.string(),
+        parentTabId: terminalTabIdSchema,
+        leafId: z.string(),
+        ptyId: z.string(),
+        incarnationId: z.string().min(1).max(128),
+        retiredAt: z.number().finite().nonnegative()
+      })
+    )
+    .optional()
 })
 
 export type ParsedWorkspaceSession =

@@ -74,13 +74,31 @@ describe('showOsc52ClipboardBlockedToast', () => {
     expect(toastInfoMock).toHaveBeenCalledTimes(1)
   })
 
-  it('mentions Grok in every supported locale', () => {
+  it('keeps the session notice unspent when the toast throws', async () => {
+    // Why: with the latch above toast.info, a throw burns the opted-out user's one
+    // hint and every later blocked write fails silently. Only a throwing first call
+    // separates the two orderings — the passing case satisfies both.
+    const { showOsc52ClipboardBlockedToast } = await importToastModule()
+    toastInfoMock.mockImplementationOnce(() => {
+      throw new Error('toast unavailable')
+    })
+
+    expect(() => showOsc52ClipboardBlockedToast()).toThrow('toast unavailable')
+    showOsc52ClipboardBlockedToast()
+
+    expect(toastInfoMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('mentions Grok and Zellij in every supported locale', () => {
+    // Why assert the catalog, not the code fallback: en.json is bundled as the
+    // `en` resource, so a catalog value silently wins over translate()'s fallback.
     const locales = [en, es, ja, ko, zh]
 
     for (const locale of locales) {
-      expect(
-        locale.auto.lib.agent.catalog['0baad2d5d2']
-      ).toContain('Grok')
+      const description =
+        locale.auto.components.terminal.pane.osc52.clipboard.blocked.toast['7cf51f74fd']
+      expect(description).toContain('Grok')
+      expect(description).toContain('Zellij')
     }
   })
 })
