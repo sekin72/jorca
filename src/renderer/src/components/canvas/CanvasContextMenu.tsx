@@ -13,7 +13,7 @@
 import React, { useEffect } from 'react'
 import type { Point } from '../../../../shared/canvas-node'
 import type { TuiAgent } from '../../../../shared/types'
-import { createAgentCanvasNode, createTerminalCanvasNode } from './canvas-node-creation'
+import { createAgentCanvasNode, createBrowserCanvasNode, createTerminalCanvasNode } from './canvas-node-creation'
 import { translate } from '@/i18n/i18n'
 
 const SURFACE_CLASS =
@@ -51,6 +51,10 @@ export function CanvasContextMenu({
     void createTerminalCanvasNode(canvasPoint)
     onClose()
   }
+  const newBrowser = (): void => {
+    void createBrowserCanvasNode(canvasPoint)
+    onClose()
+  }
 
   const items: MenuItem[] = [
     { kind: 'item', label: 'Claude Code', onSelect: () => launch('claude') },
@@ -61,6 +65,11 @@ export function CanvasContextMenu({
       kind: 'item',
       label: translate('auto.components.canvas.CanvasToolbar.newTerminal', 'New terminal'),
       onSelect: newTerminal
+    },
+    {
+      kind: 'item',
+      label: translate('auto.components.canvas.CanvasToolbar.newBrowser', 'New browser'),
+      onSelect: newBrowser
     }
   ]
 
